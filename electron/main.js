@@ -1,4 +1,4 @@
-// Arca Estudio for Windows: opens the same editor as the web app in its own window.
+// Bezaleel for Windows: opens the same editor as the web app in its own window.
 const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -11,7 +11,7 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 640,
-    title: 'Arca Estudio',
+    title: 'Bezaleel',
     backgroundColor: '#100D0B',
     icon: path.join(ROOT, 'build', 'icon.png'),
     autoHideMenuBar: true,
@@ -44,7 +44,7 @@ function setupUpdates(win) {
       defaultId: 0,
       cancelId: 1,
       title: 'Actualización lista',
-      message: `Arca Estudio ${info.version} ya se descargó.`,
+      message: `Bezaleel ${info.version} ya se descargó.`,
       detail: 'Si estás exportando un video, espera a que termine. Si eliges "Después", la nueva versión se instala sola cuando cierres el programa.'
     });
     if (response === 0) autoUpdater.quitAndInstall();

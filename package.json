@@ -1,12 +1,11 @@
 {
-  "name": "arca-estudio",
-  "productName": "Arca Estudio",
+  "name": "bezaleel",
+  "productName": "Bezaleel",
   "version": "1.0.0",
-  "description": "Editor de video para el equipo de medios",
+  "description": "Editor de video gratis y de código abierto para iglesias y equipos de alabanza",
   "main": "electron/main.js",
   "author": "Ricardo Vega",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --publish never"
@@ -16,8 +15,8 @@
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "com.arca.estudio",
-    "productName": "Arca Estudio",
+    "appId": "org.bezaleel.editor",
+    "productName": "Bezaleel",
     "files": [
       "electron/**",
       "app/**",
@@ -31,14 +30,14 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.png",
-      "artifactName": "ArcaEstudio-Setup-${version}.${ext}"
+      "artifactName": "Bezaleel-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Arca Estudio"
+      "shortcutName": "Bezaleel"
     },
     "publish": [
       {
@@ -50,5 +49,9 @@
   },
   "dependencies": {
     "electron-updater": "6.8.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ricardiaz97-hub/Ricardo-Vega.git"
   }
 }

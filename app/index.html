@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Arca Estudio</title>
-<meta name="description" content="Editor de video para el equipo de medios: cortes, títulos, transiciones, filtros, audio y exportación a MP4.">
+<title>Bezaleel</title>
+<meta name="description" content="Editor de video gratis y de código abierto para iglesias y equipos de alabanza: cortes, títulos, transiciones, filtros, audio y exportación a MP4.">
 <meta name="theme-color" content="#100D0B">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="fonts.css">
 <style>
 /* Layout: a dark editing bay. Library left, program monitor centre, properties right, multitrack timeline along the bottom.
-   One accent (Arca orange) marks "now": the playhead, the selected clip, the primary action. Track kinds carry their own muted hues. */
+   One accent (ember orange) marks "now": the playhead, the selected clip, the primary action. Track kinds carry their own muted hues. */
 :root{
   color-scheme:dark;
   --bg:#100D0B; --panel:#181411; --raise:#221C17; --sunk:#0B0907; --line:#30271E; --line2:#4A3D30;
@@ -43,7 +43,7 @@ svg.f{fill:currentColor;stroke:none}
 /* top bar */
 .top{grid-area:top;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
 .brand{display:flex;align-items:baseline;gap:6px;font-stretch:75%;text-transform:uppercase;letter-spacing:.04em}
-.brand b{font-weight:900;font-size:20px}
+.brand b{font-weight:900;font-size:21px;letter-spacing:.03em}
 .brand span{font-weight:600;font-size:14px;color:var(--accent)}
 .top .pname{background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 8px;font-weight:600;min-width:0;width:220px}
 .top .pname:hover{border-color:var(--line)}
@@ -280,7 +280,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .steps li::before{content:counter(st);font-stretch:62%;font-weight:900;font-size:4.2rem;line-height:.8;color:var(--accent)}
 .steps h3{margin:0;font-size:1.1rem;font-weight:800}
 .steps p{margin:0;color:var(--muted);line-height:1.55}
-.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .fact{border:1px solid var(--line2);border-radius:10px;padding:20px;display:grid;gap:8px}
 .fact h3{margin:0;font-size:1rem;font-weight:800}
 .fact p{margin:0;color:var(--muted);line-height:1.55;font-size:.93rem}
@@ -289,7 +289,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .lp-band .btn{background:var(--accent-ink);color:var(--fg);border-color:var(--accent-ink)}
 .lp-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding-block:24px 36px;border-top:1px solid var(--line);color:var(--dim);font-size:.85rem}
 .brand{border:0;background:none;padding:0;cursor:pointer;color:inherit}
-@media (max-width:980px){.lp-hero{grid-template-columns:1fr}.fmts,.feats{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:1fr}}
+@media (max-width:980px){.lp-hero{grid-template-columns:1fr}.facts{grid-template-columns:1fr}.fmts,.feats{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:1fr}}
 @media (max-width:560px){.lp-nav nav{display:none}.feats,.facts{grid-template-columns:1fr}.fmt{grid-template-rows:110px auto}.fmt .shape{max-height:110px}}
 @media (prefers-reduced-motion:reduce){.mk-ph{left:38%}.mk-title,.mk-low{animation:none}.mk-low{opacity:1}}
 
@@ -320,7 +320,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 <div class="lp" id="landing">
   <div class="lp-wrap">
     <header class="lp-nav">
-      <div class="brand" aria-label="Arca Estudio"><b>Arca</b><span>Estudio</span></div>
+      <div class="brand"><b>Bezaleel</b></div>
       <nav aria-label="Secciones"><a href="#formatos">Formatos</a><a href="#funciones">Funciones</a><a href="#como">Cómo funciona</a></nav>
       <button class="btn" id="lpInstall" hidden>Instalar app</button>
       <a class="btn ghost" id="lpWin" hidden href="https://github.com/ricardiaz97-hub/Ricardo-Vega/releases/latest" target="_blank" rel="noopener">Descargar para Windows</a>
@@ -329,9 +329,9 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
     <section class="lp-hero">
       <div>
-        <div class="lp-eyebrow"><i></i>Editor de video para el equipo de medios</div>
+        <div class="lp-eyebrow"><i></i>Editor de video gratis para iglesias</div>
         <h1>Edita el culto. <em>Compártelo</em> el mismo día.</h1>
-        <p class="lp-lead">Corta la grabación, pon la letra de las canciones, el nombre de quien predica y el versículo, y exporta en MP4 para YouTube, Facebook o Reels. Todo desde el navegador, sin instalar nada.</p>
+        <p class="lp-lead">Corta la grabación, pon la letra de las canciones, el nombre de quien predica y el versículo, y exporta en MP4 para YouTube, Facebook o Reels. Gratis, sin marcas de agua y sin funciones bloqueadas.</p>
         <div class="lp-cta">
           <button class="btn primary lg" data-lp="new" data-aspect="16:9">Empezar un video nuevo</button>
           <button class="btn lg lp-resume" data-lp="open" id="lpResume" hidden><span>Continuar mi proyecto</span><small id="lpResumeName"></small></button>
@@ -361,7 +361,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
     </section>
 
     <section class="lp-sec" id="funciones">
-      <div class="lp-sec-h"><h2>Lo que necesitas para un domingo</h2><p>Las herramientas de un editor como Filmora, pensadas para el material de la iglesia.</p></div>
+      <div class="lp-sec-h"><h2>Lo que necesitas para un domingo</h2><p>Las herramientas de un editor profesional, pensadas para el material de la iglesia. Todas incluidas, sin pagar nada.</p></div>
       <div class="feats">
         <div class="feat"><span data-ic="layers"></span><h3>Línea de tiempo</h3><p>Dos pistas de video, dos de texto, música y voz. Arrastra, recorta y acomoda.</p><span class="spec">6 pistas · imán · deshacer</span></div>
         <div class="feat"><span data-ic="split"></span><h3>Cortes precisos</h3><p>Divide la grabación donde quieras y quita lo que sobra, fotograma por fotograma.</p><span class="spec">tecla S · 30 fps</span></div>
@@ -385,6 +385,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
     <section class="lp-sec">
       <div class="facts">
+        <div class="fact"><h3>Gratis para siempre</h3><p>Sin suscripciones, sin marcas de agua y sin efectos "premium". Bezaleel es de código abierto: cualquier iglesia puede usarlo, y cualquiera puede ayudar a mejorarlo.</p></div>
         <div class="fact"><h3>Tus videos no salen de tu computadora</h3><p>Los archivos se quedan en este navegador. Tu proyecto se guarda solo y sigue aquí cuando vuelvas a abrir la página.</p></div>
         <div class="fact"><h3>Exporta en tiempo real</h3><p>El video se graba mientras se reproduce: uno de 5 minutos tarda unos 5 minutos. Deja la pestaña abierta hasta que termine.</p></div>
       </div>
@@ -395,7 +396,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <button class="btn lg" data-lp="new" data-aspect="16:9">Empezar un video nuevo</button>
     </section>
 
-    <footer class="lp-foot"><span>Arca Estudio · parte de Arca</span><span>Hecho para el ministerio de medios</span></footer>
+    <footer class="lp-foot"><span>Bezaleel · software libre para iglesias y equipos de alabanza</span><span><a href="https://github.com/ricardiaz97-hub/Ricardo-Vega" target="_blank" rel="noopener">Código fuente</a> · Licencia GPL-3.0</span></footer>
   </div>
 </div>
 
@@ -407,7 +408,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
 <div class="app" id="app" hidden>
   <header class="top">
-    <button class="brand" id="bHome" title="Volver a la página de inicio"><b>Arca</b><span>Estudio</span></button>
+    <button class="brand" id="bHome" title="Volver a la página de inicio"><b>Bezaleel</b></button>
     <input id="pName" class="pname" type="text" aria-label="Nombre del proyecto" value="Mi video">
     <div class="top-mid">
       <button class="ib" id="bUndo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer" data-ic="undo"></button>
@@ -581,7 +582,7 @@ const TITLES = [
 const BGS = [
   { n: 'Negro', bg: { t: 'solid', c1: '#000000', c2: '#000000' } },
   { n: 'Blanco', bg: { t: 'solid', c1: '#FFFFFF', c2: '#FFFFFF' } },
-  { n: 'Arca', bg: { t: 'radial', c1: '#E85D04', c2: '#181512' } },
+  { n: 'Brasa', bg: { t: 'radial', c1: '#E85D04', c2: '#181512' } },
   { n: 'Noche', bg: { t: 'linear', c1: '#1F4E79', c2: '#05080C' } },
   { n: 'Amanecer', bg: { t: 'linear', c1: '#F7C948', c2: '#E85D04' } },
   { n: 'Bosque', bg: { t: 'linear', c1: '#2D6A5C', c2: '#0B1C18' } },
@@ -642,7 +643,7 @@ const DB = {
     if (this.p) return this.p;
     this.p = new Promise(res => {
       try {
-        const r = indexedDB.open('arca-estudio', 1);
+        const r = indexedDB.open('bezaleel', 1);
         r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('media')) d.createObjectStore('media', { keyPath: 'id' }); if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv'); };
         r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
       } catch (e) { res(null); }
@@ -1543,7 +1544,7 @@ $('#bHome').addEventListener('click', showLanding);
 
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#lpInstall').hidden = false; });
-window.addEventListener('appinstalled', () => { installEvt = null; $('#lpInstall').hidden = true; toast('Arca Estudio quedó instalado. Ábrelo desde tu escritorio o el menú Inicio.', 5000); });
+window.addEventListener('appinstalled', () => { installEvt = null; $('#lpInstall').hidden = true; toast('Bezaleel quedó instalado. Ábrelo desde tu escritorio o el menú Inicio.', 5000); });
 $('#lpInstall').addEventListener('click', async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; $('#lpInstall').hidden = true; });
 const standalone = matchMedia('(display-mode: standalone)').matches || IS_DESKTOP;
 $('#lpWin').hidden = IN_CLAUDE || IS_DESKTOP || standalone || !/Windows/.test(navigator.userAgent);
@@ -1556,7 +1557,7 @@ function loadDemo() {
   const bg1 = newClip('color', 'v1', 0, 5, { bg: { t: 'radial', c1: '#E85D04', c2: '#181512' } }); bg1.tin = { t: 'fade', d: .8 };
   const bg2 = newClip('color', 'v1', 5, 6, { bg: { t: 'linear', c1: '#1F4E79', c2: '#05080C' } }); bg2.tin = { t: 'wipe', d: .8 }; bg2.tout = { t: 'fade', d: 1 };
   const t1 = textFromPreset(0, .6); t1.text.s = 'Bienvenidos'; t1.dur = 4;
-  const t2 = textFromPreset(1, 1.4); t2.text.s = 'Ejemplo de proyecto · Arca Estudio'; t2.dur = 3.4; t2.y = .66;
+  const t2 = textFromPreset(1, 1.4); t2.text.s = 'Proyecto de ejemplo · Bezaleel'; t2.dur = 3.4; t2.y = .66;
   const t3 = textFromPreset(4, 5.5); t3.dur = 5;
   const t4 = textFromPreset(2, 6.2); t4.text.s = 'Reunión de Ministerios\nGrabación en vivo'; t4.dur = 4.2; t4.tin = { t: 'slide', d: .6 };
   t3.y = .42; t2.track = 't2'; t4.track = 't1'; t3.track = 't2';
