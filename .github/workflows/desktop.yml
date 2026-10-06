@@ -30,7 +30,7 @@ jobs:
         run: ls dist/latest.yml dist/*.exe dist/*.exe.blockmap
       - uses: actions/upload-artifact@v4
         with:
-          name: ArcaEstudio-Windows
+          name: Bezaleel-Windows
           path: |
             dist/*.exe
             dist/*.exe.blockmap
@@ -38,8 +38,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: Arca Estudio ${{ steps.version.outputs.version }}
-          body: Instalador de Arca Estudio para Windows. Si ya lo tienes instalado, se actualiza solo; si no, descarga el archivo .exe y ábrelo.
+          name: Bezaleel ${{ steps.version.outputs.version }}
+          body: Instalador de Bezaleel para Windows. Si ya lo tienes instalado, se actualiza solo; si no, descarga el archivo .exe y ábrelo.
           files: |
             dist/*.exe
             dist/*.exe.blockmap

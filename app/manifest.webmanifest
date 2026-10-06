@@ -1,7 +1,7 @@
 {
-  "name": "Arca Estudio",
-  "short_name": "Arca Estudio",
-  "description": "Editor de video para el equipo de medios: cortes, títulos, transiciones, filtros, audio y exportación a MP4.",
+  "name": "Bezaleel",
+  "short_name": "Bezaleel",
+  "description": "Editor de video gratis y de código abierto para iglesias y equipos de alabanza: cortes, títulos, transiciones, filtros, audio y exportación a MP4.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",
