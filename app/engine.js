@@ -306,8 +306,26 @@ void main() { vec4 c = texture(T, v); vec3 u = unp(c);
 uniform sampler2D T; uniform sampler2D C; uniform float uCurve;
 uniform float uExp, uTemp, uTint, uCon, uPiv, uHi, uSh, uWh, uBl, uSat, uVib;
 uniform vec3 uLift, uGamma, uGain;
+uniform float uHsl, uHH[8], uHS[8], uHL[8];
 ${HELP}
 float luma(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+vec3 rgb2hsv(vec3 c) { vec4 K = vec4(0., -1. / 3., 2. / 3., -1.); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y);
+  return vec3(abs(q.z + (q.w - q.y) / (6. * d + 1e-6)), d / (q.x + 1e-6), q.x); }
+vec3 hsv2rgb(vec3 c) { vec3 p = abs(fract(c.xxx + vec3(1., 2. / 3., 1. / 3.)) * 6. - 3.); return c.z * mix(vec3(1.), clamp(p - 1., 0., 1.), c.y); }
+// HSL by color band (reds, oranges, yellows, greens, aquas, blues, purples, magentas): each pixel blends the two
+// bands its hue falls between, and grays are left alone.
+const float BC[9] = float[9](0., 30., 60., 120., 180., 225., 270., 315., 360.);
+vec3 hslBands(vec3 c) {
+  vec3 h = rgb2hsv(c); float hue = h.x * 360.; int k = 7;
+  for (int i = 0; i < 8; i++) if (hue >= BC[i] && hue < BC[i + 1]) { k = i; break; }
+  float t = (hue - BC[k]) / (BC[k + 1] - BC[k]); int k2 = k == 7 ? 0 : k + 1;
+  float dh = mix(uHH[k], uHH[k2], t), ds = mix(uHS[k], uHS[k2], t), dl = mix(uHL[k], uHL[k2], t);
+  float w = smoothstep(.03, .22, h.y);
+  h.x = fract(h.x + dh * w * 30. / 360.); h.y = clamp(h.y * (1. + ds * w), 0., 1.);
+  // hue and saturation keep the pixel's brightness; only Luminancia changes it
+  float L0 = luma(c); vec3 o2 = hsv2rgb(h); float L1 = luma(o2); o2 *= L1 > 1e-4 ? L0 / L1 : 1.;
+  return o2 * (1. + dl * .55 * w * h.y); }
 void main() { vec4 s = texture(T, v); vec3 c = unp(s);
   c *= vec3(1. + .16 * uTemp + .06 * uTint, 1. - .12 * uTint, 1. - .16 * uTemp + .06 * uTint);
   c *= exp2(uExp);
@@ -321,6 +339,7 @@ void main() { vec4 s = texture(T, v); vec3 c = unp(s);
   float Y = luma(c), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
   c = mix(vec3(Y), c, (1. + uSat) * (1. + uVib * (1. - clamp(sat, 0., 1.))));
   c = clamp(c, 0., 1.);
+  if (uHsl > .5) c = clamp(hslBands(c), 0., 1.);
   if (uCurve > .5) { vec3 q = c * 255. / 256. + .5 / 256.; c = vec3(texture(C, vec2(q.r, .5)).r, texture(C, vec2(q.g, .5)).g, texture(C, vec2(q.b, .5)).b); }
   o = vec4(c * s.a, s.a); }`;
   const COPY_FS = `${HEAD}
@@ -434,6 +453,9 @@ in vec2 p; out vec2 v; void main() { v = p * .5 + .5; gl_Position = vec4(p, 0., 
         for (const [u, k] of [['uExp', 'exp'], ['uTemp', 'temp'], ['uTint', 'tint'], ['uCon', 'con'], ['uHi', 'hi'], ['uSh', 'sh'], ['uWh', 'wh'], ['uBl', 'bl'], ['uSat', 'sat'], ['uVib', 'vib']]) gl.uniform1f(U(p, u), n(k));
         gl.uniform1f(U(p, 'uPiv'), gr.piv != null ? +gr.piv : .435);
         const L = v3(gr.lift, gr.liftY).map(x => x * .25), G = v3(gr.gamma, gr.gammaY).map(x => x * .5), N = v3(gr.gain, gr.gainY).map(x => x * .5);
+        const hs = gr.hsl || {}, arr = ch => Float32Array.from({ length: 8 }, (_, i) => +((hs[ch] || {})[i]) || 0), HH = arr('h'), HS = arr('s'), HL = arr('l');
+        const on = [HH, HS, HL].some(a => a.some(Boolean)); gl.uniform1f(U(p, 'uHsl'), on ? 1 : 0);
+        if (on) { gl.uniform1fv(U(p, 'uHH'), HH); gl.uniform1fv(U(p, 'uHS'), HS); gl.uniform1fv(U(p, 'uHL'), HL); }
         gl.uniform3f(U(p, 'uLift'), L[0], L[1], L[2]); gl.uniform3f(U(p, 'uGamma'), G[0], G[1], G[2]); gl.uniform3f(U(p, 'uGain'), N[0], N[1], N[2]);
       });
     };
