@@ -12,4 +12,6 @@ Bezaleel includes these fonts, each under the [SIL Open Font License 1.1](app/fo
 | Oswald | `oswald-OFL.txt` |
 | Playfair Display | `playfairdisplay-OFL.txt` |
 
+Noise reduction uses [RNNoise](https://github.com/xiph/rnnoise) (Xiph.Org, Mozilla; BSD 3-Clause), compiled to WebAssembly by [rnnoise-wasm](https://github.com/shiguredo/rnnoise-wasm) (Shiguredo; Apache License 2.0) and wrapped as an AudioWorklet by [web-noise-suppressor](https://github.com/sapphi-red/web-noise-suppressor) (MIT). The files and all three licenses are in `app/vendor/rnnoise/`.
+
 The Windows program is built with [Electron](https://www.electronjs.org/) (MIT License) and uses [electron-updater](https://www.electron.build/) (MIT License).
