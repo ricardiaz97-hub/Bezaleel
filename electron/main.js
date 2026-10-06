@@ -48,12 +48,25 @@ function createWindow() {
 
 // Checks GitHub Releases for a newer installer, downloads it in the background,
 // and installs it on restart. Runs only in the installed program, not with `npm start`.
-const FOUR_HOURS = 4 * 60 * 60 * 1000;
+// It checks at launch, every 30 minutes, and when the window comes back to the front
+// (at most every 10 minutes), and shows the download in the title bar and taskbar so
+// people can see an update is on its way.
+const HALF_HOUR = 30 * 60 * 1000, TEN_MIN = 10 * 60 * 1000;
 function setupUpdates(win) {
   if (!app.isPackaged) return;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  const title = 'Bezaleel';
+  let busy = false;
+  autoUpdater.on('update-available', info => { busy = true; if (!win.isDestroyed()) win.setTitle(`${title} · descargando la versión ${info.version}…`); });
+  autoUpdater.on('download-progress', p => {
+    if (win.isDestroyed()) return;
+    win.setProgressBar(Math.max(0, Math.min(1, p.percent / 100)));
+    win.setTitle(`${title} · descargando actualización ${Math.round(p.percent)} %`);
+  });
   autoUpdater.on('update-downloaded', async info => {
+    busy = false;
+    if (!win.isDestroyed()) { win.setProgressBar(-1); win.setTitle(`${title} · versión ${info.version} lista para instalar`); }
     const { response } = await dialog.showMessageBox(win, {
       type: 'info',
       buttons: ['Reiniciar ahora', 'Después'],
@@ -66,10 +79,12 @@ function setupUpdates(win) {
     if (response === 0) autoUpdater.quitAndInstall();
   });
   // No internet or GitHub unreachable: keep working and try again at the next check.
-  autoUpdater.on('error', () => {});
-  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.on('error', () => { busy = false; if (!win.isDestroyed()) { win.setProgressBar(-1); win.setTitle(title); } });
+  let last = 0;
+  const check = () => { if (busy) return; last = Date.now(); autoUpdater.checkForUpdates().catch(() => {}); };
   check();
-  setInterval(check, FOUR_HOURS);
+  setInterval(check, HALF_HOUR);
+  win.on('focus', () => { if (Date.now() - last > TEN_MIN) check(); });
 }
 
 // One copy at a time: opening the shortcut again focuses the existing window.
