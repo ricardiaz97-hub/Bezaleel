@@ -1,5 +1,5 @@
 // Keeps Bezaleel working without internet. Bump VERSION when any app file changes.
-const VERSION = 'bezaleel-v6';
+const VERSION = 'bezaleel-v7';
 const SHELL = [
   './', './index.html', './engine.js', './rhythm.js', './person.js',
   './brand/philly.webp', './brand/taber.webp', './brand/arca.webp', './brand/arpa.webp',
