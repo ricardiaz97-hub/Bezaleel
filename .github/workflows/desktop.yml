@@ -1,0 +1,35 @@
+name: Programa para Windows
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'electron/**', 'build/**', 'package.json', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run dist:win
+      - id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ArcaEstudio-Windows
+          path: dist/*.exe
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Arca Estudio ${{ steps.version.outputs.version }}
+          body: Instalador de Arca Estudio para Windows. Descarga el archivo .exe y ábrelo.
+          files: dist/*.exe
+          make_latest: true
