@@ -1,9 +1,25 @@
 // Bezaleel for Windows: opens the same editor as the web app in its own window.
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, shell, protocol, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
+const APP_DIR = path.join(ROOT, 'app');
+
+// The editor is served from app://bezaleel/ instead of file://, so it behaves like the web app:
+// a secure origin (needed for the noise-reduction worklet), working fetch(), and stable storage.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
+]);
+function serveApp() {
+  protocol.handle('app', req => {
+    const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, '') || 'index.html';
+    const file = path.normalize(path.join(APP_DIR, rel));
+    if (file !== APP_DIR && !file.startsWith(APP_DIR + path.sep)) return new Response('Not found', { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
+  });
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -17,7 +33,7 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true }
   });
-  win.loadFile(path.join(ROOT, 'app', 'index.html'));
+  win.loadURL('app://bezaleel/index.html');
 
   // Links to other websites open in the normal browser, never inside the editor window.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -25,7 +41,7 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file:')) { e.preventDefault(); shell.openExternal(url); }
+    if (!url.startsWith('app://bezaleel/')) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
   });
   return win;
 }
@@ -66,6 +82,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
+    serveApp();
     setupUpdates(createWindow());
     app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
   });

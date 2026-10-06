@@ -8,6 +8,7 @@
  * Adding an effect: add an entry to FX with its parameters and a GLSL body that writes `o`
  * (premultiplied RGBA) from the input layer sampled with S(uv). Parameters become uniforms
  * named u_<key>. `uT` is seconds since the clip started, `uR` the frame size in pixels.
+ * An effect with an `amt` parameter can also follow the music: the editor scales `amt` on each beat.
  *
  * Adding a transition: add an entry to TRX. Its body mixes SA(uv) (outgoing) and SB(uv)
  * (incoming) using progress uP from 0 to 1. A solo clip's entrance has no A; its exit no B.
@@ -19,7 +20,14 @@
   const spd = def => ({ n: 'Velocidad', min: 0, max: 1, step: .01, def, f: PCT });
 
   /* ---------- clip and adjustment effects ---------- */
+  // `beat: 1` marks effects meant to hit on the music: they start with "Al ritmo" switched on.
   const FX = {
+    punch: { n: 'Pulso de zoom', beat: 1, p: { amt: amt(.5) }, g: `
+      vec2 q = v - .5; vec4 acc = vec4(0.);
+      for (int i = 0; i < 10; i++) acc += S(q * (1. - float(i) * u_amt * .012) / (1. + u_amt * .22) + .5);
+      o = acc / 10.;` },
+    flash: { n: 'Destello', beat: 1, p: { amt: amt(.6), col: { n: 'Color', t: 'color', def: '#FFFFFF' } }, g: `
+      vec4 c = S(v); o = vec4(mix(c.rgb, u_col * c.a, u_amt * .85), c.a);` },
     ab: { n: 'Aberración cromática', p: { amt: amt(.5) }, g: `
       vec2 d = (v - .5) * u_amt * .035;
       vec4 r = S(v + d), c = S(v), b = S(v - d);

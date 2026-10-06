@@ -23,6 +23,8 @@ Your videos never leave your computer. Projects are stored locally on each machi
 - 17 transitions (zoom warp, RGB shake, glitch, light leak, film burn, whip and more) at the start or end of a clip, or at the joint between two clips
 - LUTs: 10 built-in looks plus `.cube` import
 - Gradual zoom in and out on any clip
+- Rhythm: automatic beat detection for the song on the Música track (or tap the beat by hand), beat markers and snapping, effects that hit on every beat, 2 beats or bar, and **Cortar al ritmo** to cut a clip on the beat with transitions
+- Audio: 5-band equalizer with presets, background noise reduction (RNNoise), voice enhancement, lowering the music when someone speaks, and volume normalizing
 - Color filters, audio fades and crossfades, detaching audio from video
 - 16:9, 9:16, 1:1 and 4:5 formats
 - Export to MP4
@@ -35,6 +37,8 @@ See [docs/STANDARDS.md](docs/STANDARDS.md) for the mission, the promises the pro
 |---|---|
 | `app/index.html` | The editor |
 | `app/engine.js` | The effects engine: every effect, transition and built-in LUT, as WebGL 2 shaders |
+| `app/rhythm.js` | Beat detection and tap tempo |
+| `app/vendor/rnnoise/` | The noise reduction model and its worklet (third-party, see NOTICE) |
 | `app/` (other files) | Manifest, offline service worker, fonts and icons |
 | `electron/` | The Windows program, which wraps `app/` and handles automatic updates |
 | `.github/workflows/pages.yml` | Publishes `app/` to GitHub Pages on every push to `main` |
