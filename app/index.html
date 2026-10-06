@@ -142,6 +142,17 @@ svg.f{fill:currentColor;stroke:none}
 .stage{position:relative;background:#050505;border-radius:4px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 30px 60px -24px rgba(0,0,0,.9)}
 .stage canvas{display:block;width:100%;height:100%;touch-action:none}
 .stage.grab canvas{cursor:move}
+/* scopes float over the corner of the preview, on glass */
+.scopes{position:absolute;right:12px;bottom:12px;z-index:4;width:min(300px,46%);padding:6px;border-radius:14px;display:grid;gap:6px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03)),rgba(14,13,12,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px -16px #000}
+.scopes .seg button{font-size:11px;padding:4px 2px}
+.scopes canvas{width:100%;height:auto;display:block;border-radius:8px;background:#060505}
+#bScopes[aria-pressed="true"]{color:var(--accent);background:var(--raise)}
+/* grading widgets */
+.wheels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wheel{display:grid;justify-items:center;gap:4px;font-size:11.5px;color:var(--muted)}
+.wheel canvas{width:100%;max-width:120px;aspect-ratio:1;touch-action:none;cursor:grab}
+canvas.curve{width:100%;max-width:280px;aspect-ratio:1;justify-self:center;touch-action:none;cursor:crosshair;border-radius:10px}
+.gtools{padding-top:4px;border-top:1px solid var(--line)}
 .stage:fullscreen{box-shadow:none;background:#000;display:grid;place-items:center}
 .stage:fullscreen canvas{width:auto;height:auto;max-width:100vw;max-height:100vh;aspect-ratio:var(--ar)}
 .transport{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--line)}
@@ -715,7 +726,8 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
   </aside>
 
   <main class="view">
-    <div class="stagebox" id="stagebox"><div class="stage" id="stage"><canvas id="cv" aria-label="Vista previa del video"></canvas></div></div>
+    <div class="stagebox" id="stagebox"><div class="stage" id="stage"><canvas id="cv" aria-label="Vista previa del video"></canvas></div>
+      <div class="scopes" id="scopes" hidden><div class="seg" role="group" aria-label="Tipo de scope"><button data-scope="wave" aria-pressed="true">Onda</button><button data-scope="parade" aria-pressed="false">RGB</button><button data-scope="hist" aria-pressed="false">Histograma</button><button data-scope="vec" aria-pressed="false">Vector</button></div><canvas id="scopeC" width="480" height="270" aria-label="Scope de color"></canvas></div></div>
     <div class="transport">
       <div class="tc"><span id="tcCur">00:00:00:00</span><span class="dim"> / </span><span id="tcEnd">00:00:00:00</span></div>
       <div class="tbtns">
@@ -726,6 +738,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
         <button class="ib" id="bEnd" title="Ir al final (Fin)" aria-label="Ir al final" data-ic="end"></button>
       </div>
       <div class="tright">
+        <button class="ib" id="bScopes" title="Scopes: forma de onda, histograma y vectorscopio" aria-label="Mostrar scopes" aria-pressed="false" data-ic="scope"></button>
         <button class="ib" id="bShot" title="Guardar este fotograma como imagen" aria-label="Guardar fotograma" data-ic="camera"></button>
         <button class="ib" id="bFull" title="Pantalla completa" aria-label="Pantalla completa" data-ic="expand"></button>
       </div>
@@ -841,6 +854,7 @@ const IC = {
   unlink: 'M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 4 8M3 3l18 18',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
   check: 'M5 12.5l4.5 4.5L19 7.5',
+  scope: 'M3 4v16h18M7 15l3-5 3 3 3-6 3 4',
   music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
 };
 function svg(n) { const d = IC[n] || ''; const f = d.startsWith('f:'); return `<svg viewBox="0 0 24 24" class="${f ? 'f' : ''}" aria-hidden="true"><path d="${f ? d.slice(2) : d}"/></svg>`; }
@@ -933,7 +947,7 @@ const trackOf = id => TRACKS.find(t => t.id === id);
 const compatible = (type, tid) => { const k = trackOf(tid).kind; if (type === 'lut' || type === 'motion' || type === 'tr' || type === 'person') return false; return type === 'fx' ? k === 'fx' : type === 'text' ? k === 'text' : type === 'audio' ? k === 'audio' : k === 'video'; };
 const isBound = c => c.type === 'video' || c.type === 'audio';
 function maxDurFor(c, inPt) { if (!isBound(c)) return Infinity; const m = M.get(c.mediaId); if (!m || !m.duration) return Infinity; return Math.max(MIN, (m.duration - inPt) / c.speed); }
-function clipName(c) { if (c.type === 'fx') { const e = (c.efx || [])[0]; return e && BFX && BFX.FX[e.k] ? BFX.FX[e.k].n : 'Efecto'; } if (c.type === 'text') return (c.text.s || 'Texto').split('\n')[0]; if (c.type === 'color') return 'Fondo de color'; const m = M.get(c.mediaId); return m ? m.name : 'Archivo no encontrado'; }
+function clipName(c) { if (c.type === 'fx') { const e = (c.efx || [])[0]; return e && BFX && BFX.FX[e.k] ? BFX.FX[e.k].n : c.grade ? 'Capa de color' : 'Efecto'; } if (c.type === 'text') return (c.text.s || 'Texto').split('\n')[0]; if (c.type === 'color') return 'Fondo de color'; const m = M.get(c.mediaId); return m ? m.name : 'Archivo no encontrado'; }
 
 /* ---------------- history + saving ---------------- */
 const snap = () => JSON.stringify({ clips: P.clips, bg: P.bg, aspect: P.aspect, q: P.q, ts: P.ts, name: P.name, demo: P.demo });
@@ -1375,14 +1389,50 @@ function joinOf(B) {
   const A = joinPrev(B); if (!A) return null;
   return { A, B, d: Math.max(.1, Math.min(B.join.d || 1, A.dur, B.dur)), cut: B.start };
 }
+/* ---- professional color grade (see GRADE_FS in engine.js) ---- */
+const GR_KEYS = ['exp', 'temp', 'tint', 'con', 'hi', 'sh', 'wh', 'bl', 'sat', 'vib'];
+const WHEELS = [['lift', 'Sombras'], ['gamma', 'Medios'], ['gain', 'Luces']];
+let GRADE_BYPASS = false;
+const straight = p => !p || (p.length === 2 && !p[0][0] && !p[0][1] && p[1][0] === 1 && p[1][1] === 1);
+function gradeOn(c) {
+  const g = c && c.grade; if (!g) return false;
+  if (GR_KEYS.some(k => +g[k])) return true;
+  if (WHEELS.some(([w]) => +g[w + 'Y'] || (g[w] && g[w].some(x => +x)))) return true;
+  return !!g.curves && ['m', 'r', 'g', 'b'].some(ch => !straight(g.curves[ch]));
+}
+// Monotone cubic interpolation (Fritsch-Carlson) through the curve's points: smooth, and it never overshoots.
+function curveFn(pts) {
+  const P2 = (pts && pts.length >= 2 ? pts : [[0, 0], [1, 1]]).slice().sort((a, b) => a[0] - b[0]);
+  const n = P2.length, xs = P2.map(p => p[0]), ys = P2.map(p => p[1]), d = [], m = new Array(n).fill(0);
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / Math.max(1e-6, xs[i + 1] - xs[i]));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) { if (!d[i]) { m[i] = m[i + 1] = 0; continue; } const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b; if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; } }
+  return x => {
+    if (x <= xs[0]) return ys[0]; if (x >= xs[n - 1]) return ys[n - 1];
+    let i = 0; while (i < n - 2 && x > xs[i + 1]) i++;
+    const h = xs[i + 1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+  };
+}
+const curveCache = new Map();
+function curveTable(g) {
+  const cv2 = g.curves; if (!cv2 || ['m', 'r', 'g', 'b'].every(ch => straight(cv2[ch]))) return null;
+  const key = JSON.stringify(cv2); let t = curveCache.get(key); if (t) return t;
+  const fm = curveFn(cv2.m), f = ['r', 'g', 'b'].map(ch => curveFn(cv2[ch])), data = new Uint8Array(256 * 4);
+  for (let i = 0; i < 256; i++) { const v = clamp(fm(i / 255), 0, 1); for (let k = 0; k < 3; k++) data[i * 4 + k] = Math.round(clamp(f[k](v), 0, 1) * 255); data[i * 4 + 3] = 255; }
+  if (curveCache.size > 64) curveCache.clear();
+  t = { key, data }; curveCache.set(key, t); return t;
+}
 function clipPasses(c) {
   const ps = [];
+  if (!GRADE_BYPASS && gradeOn(c)) ps.push({ grade: c.grade });
   if (c.lut && c.lut.id) { const l = getLut(c.lut.id); if (l) ps.push({ lut: l, mix: c.lut.mix != null ? c.lut.mix : 1 }); }
   for (const e of (c.efx || [])) ps.push({ e });
   return ps;
 }
 function beatParams(e, t) { return (+e.beat > 0 && e.amt != null) ? Object.assign({}, e, { amt: e.amt * beatEnv(t, +e.beat, e.decay != null ? +e.decay : .25) }) : e; }
-function runPasses(tex, ps, lt, t) { for (const p of ps) tex = p.lut ? E.lut(tex, p.lut, p.mix) : E.fx(tex, beatParams(p.e, t), lt); return tex; }
+function runPasses(tex, ps, lt, t) { for (const p of ps) tex = p.grade ? E.grade(tex, p.grade, curveTable(p.grade)) : p.lut ? E.lut(tex, p.lut, p.mix) : E.fx(tex, beatParams(p.e, t), lt); return tex; }
 function drawInto(ctx2, c, t, opts) {
   const prev = g; g = ctx2; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
   try { c.type === 'text' ? drawText(c, t, opts) : drawVisual(c, t, opts); } finally { g = prev; }
@@ -1446,7 +1496,7 @@ function renderJoin(j, t) {
 }
 // A clip on the Efectos track processes everything drawn below it.
 function applyAdjust(c, t) {
-  if (!E.ok || !(c.efx && c.efx.length)) return;
+  if (!E.ok || !clipPasses(c).length) return;
   const tex = runPasses(E.upload(cv), clipPasses(c), t - c.start, t);
   E.present(tex); blit(clamp(c.op * trans(c, t).a, 0, 1));
 }
@@ -1601,6 +1651,7 @@ function clipEl(c) {
   if (c.mute && isBound(c)) tags.push('sin sonido');
   if (c.preset !== 'none' && c.type !== 'text' && c.type !== 'audio' && c.type !== 'fx') tags.push(PRESETS[c.preset].n);
   if (c.type !== 'fx' && c.efx && c.efx.length) tags.push(c.efx.length === 1 && BFX && BFX.FX[c.efx[0].k] ? BFX.FX[c.efx[0].k].n : c.efx.length + ' efectos');
+  if (gradeOn(c)) tags.push('color');
   if (c.lut && c.lut.id) tags.push('LUT');
   if (c.kbm) tags.push(c.kbm === 'in' ? 'zoom +' : 'zoom −');
   if (segOn(c)) tags.push(c.seg.mode === 'blur' ? 'fondo borroso' : c.seg.mode === 'image' ? 'fondo imagen' : 'fondo color');
@@ -2200,6 +2251,129 @@ function sel(label, k, opts, obj) { const v = getP(obj, k); const id = 'f-' + k.
 function col(label, k, obj) { const id = 'f-' + k.replace(/\./g, '-'); return `<label class="colrow" for="${id}"><span>${label}</span><input type="color" id="${id}" data-k="${k}" value="${getP(obj, k)}"></label>`; }
 function chk(label, k, obj) { const id = 'f-' + k.replace(/\./g, '-'); return `<label class="chk" for="${id}"><input type="checkbox" id="${id}" data-k="${k}"${getP(obj, k) ? ' checked' : ''}>${label}</label>`; }
 const sec_ = (title, body, open = true) => `<details class="sec"${open ? ' open' : ''}><summary>${title}</summary><div class="sb">${body}</div></details>`;
+/* ---- color grading panel: basic sliders, lift / gamma / gain wheels, curves ---- */
+let GRADE_TAB = 'basic', CURVE_CH = 'm', GRADE_CLIP = null;
+try { GRADE_CLIP = JSON.parse(localStorage.getItem('bezaleel.grade') || 'null'); } catch (e) {}
+const stops = v => (v > 0 ? '+' : '') + (+v).toFixed(2) + ' EV', sgn = v => (v > 0 ? '+' : '') + Math.round(v * 100);
+function gradeView(c) { return { grade: Object.assign({ exp: 0, temp: 0, tint: 0, con: 0, hi: 0, sh: 0, wh: 0, bl: 0, sat: 0, vib: 0, liftY: 0, gammaY: 0, gainY: 0 }, c.grade) }; }
+function gradeFields(c) {
+  const o = gradeView(c), tabs = [['basic', 'Básico'], ['wheels', 'Ruedas'], ['curves', 'Curvas']];
+  let h = `<div class="seg" role="group" aria-label="Herramientas de color">${tabs.map(([v, n]) => `<button data-act="gtab:${v}" aria-pressed="${GRADE_TAB === v}">${n}</button>`).join('')}</div>`;
+  if (GRADE_TAB === 'basic') {
+    h += `<div class="btnrow"><button class="btn sm" data-act="gauto">${svg('spark')}Balance automático</button></div>
+      <h4 class="sh">Luz</h4>${rng('Exposición', 'grade.exp', -2, 2, .01, stops, o)}${rng('Contraste', 'grade.con', -1, 1, .01, sgn, o)}
+      <div class="row2">${rng('Altas luces', 'grade.hi', -1, 1, .01, sgn, o)}${rng('Sombras', 'grade.sh', -1, 1, .01, sgn, o)}</div>
+      <div class="row2">${rng('Blancos', 'grade.wh', -1, 1, .01, sgn, o)}${rng('Negros', 'grade.bl', -1, 1, .01, sgn, o)}</div>
+      <h4 class="sh">Color</h4><div class="row2">${rng('Temperatura', 'grade.temp', -1, 1, .01, sgn, o)}${rng('Tinte', 'grade.tint', -1, 1, .01, sgn, o)}</div>
+      <div class="row2">${rng('Saturación', 'grade.sat', -1, 1, .01, sgn, o)}${rng('Vibrancia', 'grade.vib', -1, 1, .01, sgn, o)}</div>`;
+  } else if (GRADE_TAB === 'wheels') {
+    h += `<div class="wheels">${WHEELS.map(([w, n]) => `<div class="wheel"><canvas data-wheel="${w}" width="240" height="240" aria-label="Rueda de ${n}"></canvas><span>${n}</span></div>`).join('')}</div>
+      ${WHEELS.map(([w, n]) => rng('Brillo de ' + n.toLowerCase(), `grade.${w}Y`, -1, 1, .01, sgn, o)).join('')}
+      <p class="note">Arrastra el punto hacia un color para teñir esa zona. Toca dos veces una rueda para regresarla al centro.</p>`;
+  } else {
+    h += `<div class="seg" role="group" aria-label="Canal">${[['m', 'Todos'], ['r', 'Rojo'], ['g', 'Verde'], ['b', 'Azul']].map(([v, n]) => `<button data-act="gch:${v}" aria-pressed="${CURVE_CH === v}">${n}</button>`).join('')}</div>
+      <canvas class="curve" data-curve width="520" height="520" aria-label="Curva de color"></canvas>
+      <p class="note">Toca la línea para agregar un punto y arrástralo. Toca dos veces un punto para quitarlo.</p>`;
+  }
+  h += `<div class="btnrow gtools"><button class="btn sm" data-act="gcmp" title="Mantén presionado para ver el original">Comparar</button><button class="btn sm" data-act="gcopy">Copiar</button><button class="btn sm" data-act="gpaste"${GRADE_CLIP ? '' : ' disabled'}>Pegar</button><button class="btn sm ghost" data-act="greset">Restablecer</button></div>`;
+  return h;
+}
+// a wheel puck at (x, y) in the unit disc becomes a color offset: hue from the angle, strength from the distance
+function wheelRGB(x, y) {
+  const a = Math.atan2(y, x), r = Math.min(1, Math.hypot(x, y));
+  const rgb = [0, 2 * Math.PI / 3, 4 * Math.PI / 3].map(o => Math.cos(a - o)), m = (rgb[0] + rgb[1] + rgb[2]) / 3;
+  return rgb.map(v => +((v - m) * r * .6).toFixed(4));
+}
+function drawWheel(cnv, pos) {
+  const x = cnv.getContext('2d'), W = cnv.width, R = W / 2 - 10, cx = W / 2;
+  x.clearRect(0, 0, W, W);
+  const cg = x.createConicGradient ? x.createConicGradient(0, cx, cx) : null;
+  if (cg) { for (let i = 0; i <= 6; i++) cg.addColorStop(i / 6, `hsl(${-i * 60},70%,55%)`); x.fillStyle = cg; } else x.fillStyle = '#555';
+  x.beginPath(); x.arc(cx, cx, R, 0, 7); x.fill();
+  const rg = x.createRadialGradient(cx, cx, 0, cx, cx, R); rg.addColorStop(0, 'rgba(28,26,24,1)'); rg.addColorStop(.8, 'rgba(28,26,24,.55)'); rg.addColorStop(1, 'rgba(28,26,24,.15)');
+  x.fillStyle = rg; x.beginPath(); x.arc(cx, cx, R, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(255,255,255,.18)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 10, cx); x.lineTo(cx + 10, cx); x.moveTo(cx, cx - 10); x.lineTo(cx, cx + 10); x.stroke();
+  const px = cx + (pos[0] || 0) * R, py = cx - (pos[1] || 0) * R;
+  x.fillStyle = '#F5F0E8'; x.strokeStyle = '#141210'; x.lineWidth = 4; x.beginPath(); x.arc(px, py, 11, 0, 7); x.fill(); x.stroke();
+}
+function drawCurve(cnv, g) {
+  const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height, P2 = 16, S = W - P2 * 2;
+  x.clearRect(0, 0, W, H); x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(P2, P2, S, S);
+  x.strokeStyle = 'rgba(255,255,255,.08)'; x.lineWidth = 1.5; x.beginPath();
+  for (let i = 1; i < 4; i++) { const v = P2 + S * i / 4; x.moveTo(v, P2); x.lineTo(v, P2 + S); x.moveTo(P2, v); x.lineTo(P2 + S, v); } x.stroke();
+  x.strokeStyle = 'rgba(255,255,255,.12)'; x.beginPath(); x.moveTo(P2, P2 + S); x.lineTo(P2 + S, P2); x.stroke();
+  const col = { m: '#F5F0E8', r: '#FF6B6B', g: '#6BDB7A', b: '#6BA8FF' }, cvs = (g && g.curves) || {};
+  for (const ch of ['m', 'r', 'g', 'b']) {
+    if (ch !== CURVE_CH && straight(cvs[ch])) continue;
+    const f = curveFn(cvs[ch]); x.strokeStyle = col[ch]; x.globalAlpha = ch === CURVE_CH ? 1 : .35; x.lineWidth = ch === CURVE_CH ? 4 : 2.5;
+    x.beginPath(); for (let i = 0; i <= 128; i++) { const u = i / 128, yy = clamp(f(u), 0, 1); i ? x.lineTo(P2 + u * S, P2 + (1 - yy) * S) : x.moveTo(P2 + u * S, P2 + (1 - yy) * S); } x.stroke();
+  }
+  x.globalAlpha = 1;
+  for (const [u, v] of (cvs[CURVE_CH] || [[0, 0], [1, 1]])) { x.fillStyle = '#141210'; x.strokeStyle = col[CURVE_CH]; x.lineWidth = 4; x.beginPath(); x.arc(P2 + u * S, P2 + (1 - v) * S, 10, 0, 7); x.fill(); x.stroke(); }
+}
+function gradeChanged(c) { if (!playing) { syncMedia(cur, false); requestDraw(); } }
+function initGradeWidgets(box) {
+  const c = cSel(); if (!c) return;
+  $$('canvas[data-wheel]', box).forEach(cnv => {
+    const w = cnv.dataset.wheel, posOf = () => (c.grade && c.grade[w + 'P']) || [0, 0];
+    drawWheel(cnv, posOf());
+    let lastTap = 0;
+    cnv.addEventListener('pointerdown', e => {
+      e.preventDefault(); const now = Date.now();
+      if (now - lastTap < 320) { c.grade = c.grade || {}; c.grade[w] = [0, 0, 0]; c.grade[w + 'P'] = [0, 0]; drawWheel(cnv, [0, 0]); gradeChanged(c); commit(); lastTap = 0; return; }
+      lastTap = now;
+      const r = cnv.getBoundingClientRect(), R = r.width / 2 - 10 * r.width / cnv.width, p0 = posOf().slice(), sx = e.clientX, sy = e.clientY;
+      try { cnv.setPointerCapture(e.pointerId); } catch (err) {}
+      const mv = ev => {
+        // fine control: the puck moves at half the finger's speed
+        let px = p0[0] + (ev.clientX - sx) / R * .5, py = p0[1] - (ev.clientY - sy) / R * .5; const d = Math.hypot(px, py); if (d > 1) { px /= d; py /= d; }
+        c.grade = c.grade || {}; c.grade[w + 'P'] = [+px.toFixed(4), +py.toFixed(4)]; c.grade[w] = wheelRGB(px, py);
+        drawWheel(cnv, c.grade[w + 'P']); gradeChanged(c);
+      };
+      const up = () => { cnv.removeEventListener('pointermove', mv); cnv.removeEventListener('pointerup', up); cnv.removeEventListener('pointercancel', up); refreshClip(c); commit(); };
+      cnv.addEventListener('pointermove', mv); cnv.addEventListener('pointerup', up); cnv.addEventListener('pointercancel', up);
+    });
+  });
+  const cnv = box.querySelector('canvas[data-curve]'); if (!cnv) return;
+  drawCurve(cnv, c.grade);
+  let lastTap = 0, lastIdx = -1;
+  cnv.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const r = cnv.getBoundingClientRect(), k = cnv.width / r.width, P2 = 16, S = cnv.width - 2 * P2;
+    const toUV = ev => [clamp(((ev.clientX - r.left) * k - P2) / S, 0, 1), clamp(1 - ((ev.clientY - r.top) * k - P2) / S, 0, 1)];
+    c.grade = c.grade || {}; c.grade.curves = c.grade.curves || {};
+    let pts = (c.grade.curves[CURVE_CH] || [[0, 0], [1, 1]]).map(p => p.slice());
+    const [u, v] = toUV(e);
+    let idx = pts.findIndex(p => Math.hypot((p[0] - u) * S, (p[1] - v) * S) < 30);
+    const now = Date.now();
+    if (idx >= 0 && idx === lastIdx && now - lastTap < 320 && idx > 0 && idx < pts.length - 1) { pts.splice(idx, 1); c.grade.curves[CURVE_CH] = pts; drawCurve(cnv, c.grade); gradeChanged(c); commit(); lastTap = 0; return; }
+    if (idx < 0) { const f = curveFn(pts); pts.push([u, clamp(f(u), 0, 1)]); pts.sort((a, b) => a[0] - b[0]); idx = pts.findIndex(p => p[0] === u); }
+    lastTap = now; lastIdx = idx;
+    try { cnv.setPointerCapture(e.pointerId); } catch (err) {}
+    const mv = ev => {
+      let [x2, y2] = toUV(ev);
+      if (idx === 0) x2 = 0; else if (idx === pts.length - 1) x2 = 1; else x2 = clamp(x2, pts[idx - 1][0] + .01, pts[idx + 1][0] - .01);
+      pts[idx] = [+x2.toFixed(4), +y2.toFixed(4)]; c.grade.curves[CURVE_CH] = pts.map(p => p.slice());
+      drawCurve(cnv, c.grade); gradeChanged(c);
+    };
+    const up = () => { cnv.removeEventListener('pointermove', mv); cnv.removeEventListener('pointerup', up); cnv.removeEventListener('pointercancel', up); c.grade.curves[CURVE_CH] = pts; drawCurve(cnv, c.grade); gradeChanged(c); refreshClip(c); commit(); };
+    cnv.addEventListener('pointermove', mv); cnv.addEventListener('pointerup', up); cnv.addEventListener('pointercancel', up);
+  });
+}
+// Automatic balance: neutral grays in the midtones, and blacks and whites that reach the ends of the range.
+function autoGrade(c) {
+  const t = clamp(cur, c.start, c.start + c.dur - .01);
+  const src = c.type === 'fx' ? cv : (() => { sizeLayer(layerA); drawInto(lctxA, c, t, {}); return layerA; })();
+  const sm = document.createElement('canvas'); sm.width = 96; sm.height = 54; const sx = sm.getContext('2d', { willReadFrequently: true }); sx.drawImage(src, 0, 0, 96, 54);
+  const d = sx.getImageData(0, 0, 96, 54).data, Ls = []; let R = 0, G = 0, B = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 200) continue; const r = d[i] / 255, g2 = d[i + 1] / 255, b = d[i + 2] / 255, L = .2126 * r + .7152 * g2 + .0722 * b; Ls.push(L); if (L > .15 && L < .85) { R += r; G += g2; B += b; n++; } }
+  if (Ls.length < 50) { toast('No hay suficiente imagen en el cabezal para balancear este clip.'); return; }
+  Ls.sort((a, b) => a - b); const lo = Ls[Math.floor(Ls.length * .005)], hi = Ls[Math.floor(Ls.length * .995)];
+  c.grade = Object.assign({}, c.grade);
+  if (n > 20) { R /= n; G /= n; B /= n; c.grade.temp = +clamp((B - R) / (.16 * (R + B)), -1, 1).toFixed(2); c.grade.tint = +clamp((1 - (R + B) / 2 / Math.max(.01, G)) / .12, -1, 1).toFixed(2); }
+  c.grade.bl = +clamp(-(lo - .02) / .1, -1, 1).toFixed(2); c.grade.wh = +clamp((1 - Math.min(1, hi + .02)) / .14, -1, 1).toFixed(2);
+  renderInspector(); gradeChanged(c); refreshClip(c); commit(); toast('Balance listo. Ajusta a tu gusto.');
+}
 function transFields(c) {
   const basic = (c.type === 'text' ? TRANS.concat(TRANS_TEXT) : TRANS).filter(o => o[0] !== 'none');
   const xs = BFX ? Object.entries(BFX.TRX).map(([k, d]) => ['x:' + k, d.n]) : [];
@@ -2315,7 +2489,8 @@ function renderInspector() {
     h += sec_('Animación', transFields(c));
     h += sec_('Efectos', efxFields(c), !!(c.efx && c.efx.length));
   } else if (c.type === 'fx') {
-    h += sec_('Efecto', efxFields(c) + rng('Intensidad general', 'op', 0, 1, .01, x100, c) + '<p class="note">Este efecto se aplica a todo lo que está debajo en la línea de tiempo, mientras dura. Estíralo o muévelo como cualquier clip.</p>');
+    if ((c.efx || []).length) h += sec_('Efecto', efxFields(c) + rng('Intensidad general', 'op', 0, 1, .01, x100, c) + '<p class="note">Este efecto se aplica a todo lo que está debajo en la línea de tiempo, mientras dura. Estíralo o muévelo como cualquier clip.</p>');
+    h += sec_('Color de todo lo de abajo', gradeFields(c) + '<p class="note">Esta capa corrige el color de todo el video que está debajo, mientras dura.</p>', gradeOn(c) || !(c.efx || []).length);
   } else if (c.type === 'audio') {
     h += sec_('Audio', audioFields(c));
     h += sec_('Velocidad', rng('Velocidad', 'speed', .25, 4, .05, spd, c) + '<p class="note">Cambiar la velocidad también cambia el tono de la música.</p>');
@@ -2326,7 +2501,8 @@ function renderInspector() {
     h += sec_('Imagen', transformFields(c, c.type !== 'color'));
     h += sec_('Movimiento', motionFields(c), !!(c.kbm || c.kb));
     if (c.type === 'video') h += sec_('Velocidad', rng('Velocidad', 'speed', .25, 4, .05, spd, c) + '<div class="chips">' + [.5, 1, 1.5, 2].map(v => `<button class="chip" data-act="speed:${v}" aria-pressed="${c.speed === v}">${v}×</button>`).join('') + '</div>');
-    if (c.type !== 'color') h += sec_('Color y filtros', colorFields(c), false);
+    if (c.type !== 'color') h += sec_('Corrección de color', gradeFields(c), gradeOn(c));
+    if (c.type !== 'color') h += sec_('Filtros rápidos', colorFields(c), false);
     if (c.type !== 'color') h += sec_('LUT', lutFields(c), !!(c.lut && c.lut.id));
     if (c.type !== 'color') h += sec_('Fondo (sin pantalla verde)', segFields(c), segOn(c));
     h += sec_('Efectos', efxFields(c), !!(c.efx && c.efx.length));
@@ -2334,7 +2510,7 @@ function renderInspector() {
     h += sec_('Transiciones', transFields(c), c.type === 'color');
     h += sec_('Ritmo', beatCutFields(), false);
   }
-  box.innerHTML = h; paintIcons(box); $$('input[type=range]', box).forEach(fillRange); updateInspTimes();
+  box.innerHTML = h; paintIcons(box); $$('input[type=range]', box).forEach(fillRange); initGradeWidgets(box); updateInspTimes();
 }
 function updateInspTimes() { const c = cSel(), el = $('#inspTimes'); if (!c || !el) return; el.textContent = `Empieza ${fmtS(c.start)} · dura ${c.dur.toFixed(1)} s`; }
 function projectPanel() {
@@ -2342,6 +2518,7 @@ function projectPanel() {
     ${sec_('Formato', `<div class="fld"><span>Forma del video</span><div class="seg" role="group" aria-label="Forma del video">${[['16:9', '16:9 YouTube'], ['9:16', '9:16 Reels'], ['1:1', '1:1'], ['4:5', '4:5']].map(([v, n]) => `<button data-act="aspect:${v}" aria-pressed="${P.aspect === v}">${n}</button>`).join('')}</div></div>
       <div class="fld"><span>Calidad</span><div class="seg" role="group" aria-label="Calidad">${[[720, '720p'], [1080, '1080p']].map(([v, n]) => `<button data-act="q:${v}" aria-pressed="${P.q === v}">${n}</button>`).join('')}</div></div>
       <label class="colrow" for="f-pbg"><span>Color de fondo del proyecto</span><input type="color" id="f-pbg" data-pk="bg" value="${P.bg}"></label>`)}
+    ${sec_('Color de todo el video', `<p class="note">Agrega una capa en la pista <b>Efectos</b> para corregir el color de todo el video a la vez: exposición, ruedas de color, curvas y más.</p><div><button class="btn sm" data-act="gradelayer">${svg('sliders')}Agregar capa de color</button></div>`, false)}
     ${sec_('Cómo se usa', `<p class="note">1. Importa tus archivos en <b>Medios</b>. 2. Arrástralos a la línea de tiempo o toca <b>Agregar</b>. 3. Toca un clip para editarlo aquí. 4. Cuando esté listo, toca <b>Exportar video</b>.</p>`)}
     ${sec_('Atajos de teclado', `<div class="keys"><kbd>Espacio</kbd><span>Reproducir o pausar</span><kbd>S</kbd><span>Dividir en el cabezal</span><kbd>Supr</kbd><span>Eliminar el clip</span><kbd>Ctrl + D</kbd><span>Duplicar</span><kbd>Ctrl + Z</kbd><span>Deshacer</span><kbd>Ctrl + Y</kbd><span>Rehacer</span><kbd>← →</kbd><span>Un fotograma (con Mayús: 1 segundo)</span><kbd>Ctrl + rueda</kbd><span>Acercar o alejar la línea de tiempo (también pellizcando el touchpad)</span><kbd>+  −</kbd><span>Acercar o alejar</span><kbd>Mayús + Z</kbd><span>Ver todo el proyecto</span></div>`, false)}`;
 }
@@ -2368,7 +2545,9 @@ insp.addEventListener('input', e => {
 });
 insp.addEventListener('change', e => {
   if (e.target.dataset.addfx) { const c = cSel(), k = e.target.value; if (c && k) applyToClip(c, { type: 'fx', k }); return; }
-  if (e.target.dataset.k) commit(); if (e.target.dataset.pk) { renderInspector(); commit(); } });
+  if (e.target.dataset.k) { if (e.target.dataset.k.startsWith('grade.') && cSel()) refreshClip(cSel()); commit(); } if (e.target.dataset.pk) { renderInspector(); commit(); } });
+// Comparar: while held, the preview shows the clip without its color correction
+insp.addEventListener('pointerdown', e => { if (!e.target.closest('[data-act="gcmp"]')) return; GRADE_BYPASS = true; requestDraw(); const off = () => { GRADE_BYPASS = false; requestDraw(); window.removeEventListener('pointerup', off); window.removeEventListener('pointercancel', off); }; window.addEventListener('pointerup', off); window.addEventListener('pointercancel', off); });
 insp.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const [act, arg] = b.dataset.act.split(':'); const c = cSel();
@@ -2379,9 +2558,17 @@ insp.addEventListener('click', e => {
     case 'detach': detachAudio(); return;
     case 'aspect': P.aspect = arg; setCanvasSize(); renderInspector(); commit(); return;
     case 'q': P.q = +arg; setCanvasSize(); renderInspector(); commit(); return;
+    case 'gradelayer': { if (projectEnd() <= 0) { toast('Agrega video a la línea de tiempo primero.'); return; } const L2 = newClip('fx', 'f1', 0, projectEnd(), { efx: [], grade: {} }); P.clips.push(L2); renderTimeline(); select(L2.id); GRADE_TAB = 'basic'; renderInspector(); openSec('Color de todo lo de abajo'); commit(); toast('Capa de color agregada en la pista Efectos. Lo que ajustes aquí cambia todo el video.'); return; }
   }
   if (!c) return;
   if (act === 'importlut') { $('#lutIn').click(); return; }
+  if (act === 'gtab') { GRADE_TAB = arg; renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); return; }
+  if (act === 'gch') { CURVE_CH = arg; renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); return; }
+  if (act === 'gauto') { autoGrade(c); return; }
+  if (act === 'gcmp') return;
+  if (act === 'gcopy') { GRADE_CLIP = JSON.parse(JSON.stringify(c.grade || {})); try { localStorage.setItem('bezaleel.grade', JSON.stringify(GRADE_CLIP)); } catch (err) {} toast('Color copiado. Selecciona otro clip y toca Pegar.'); renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); return; }
+  if (act === 'gpaste') { if (!GRADE_CLIP) return; c.grade = JSON.parse(JSON.stringify(GRADE_CLIP)); renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); gradeChanged(c); refreshClip(c); commit(); return; }
+  if (act === 'greset') { delete c.grade; renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); gradeChanged(c); refreshClip(c); commit(); return; }
   if (act === 'norm') { normalize(c); return; }
   if (act === 'beatdetect') { detectFor(c); return; }
   if (act === 'tapstart') { startTap(c); return; }
@@ -2571,6 +2758,56 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 new ResizeObserver(() => { fitStage(); drawRuler(); }).observe($('#stagebox'));
 new ResizeObserver(() => { renderTimeline(); }).observe(tlScroll);
 if (document.fonts) document.fonts.ready.then(() => requestDraw());
+
+/* ---------------- scopes: what the camera can't fool. Waveform, RGB parade, histogram and vectorscope of the preview ---------------- */
+let SCOPE = null, scT = 0;
+const scC = $('#scopeC'), scX = scC.getContext('2d'), smp = document.createElement('canvas'); smp.width = 160; smp.height = 90;
+const smx = smp.getContext('2d', { willReadFrequently: true });
+function updateScopes() {
+  if (!SCOPE || exporting) return; const now = performance.now(); if (playing && now - scT < 100) return; scT = now;
+  smx.drawImage(cv, 0, 0, 160, 90); const d = smx.getImageData(0, 0, 160, 90).data, W = scC.width, H = scC.height;
+  scX.globalCompositeOperation = 'source-over'; scX.fillStyle = '#060505'; scX.fillRect(0, 0, W, H);
+  scX.strokeStyle = 'rgba(255,255,255,.09)'; scX.lineWidth = 1;
+  if (SCOPE === 'wave' || SCOPE === 'parade') {
+    // 0 % to 100 % brightness, bottom to top; lines at every 25 %
+    for (let i = 0; i <= 4; i++) { const y = Math.round(8 + (H - 16) * i / 4) + .5; scX.beginPath(); scX.moveTo(0, y); scX.lineTo(W, y); scX.stroke(); }
+    const rows = 128, chans = SCOPE === 'parade' ? 3 : 1, img = scX.createImageData(160 * chans, rows), acc = new Uint16Array(160 * chans * rows);
+    for (let y = 0; y < 90; y++) for (let x = 0; x < 160; x++) {
+      const i = (y * 160 + x) * 4;
+      if (chans === 1) { const L = .2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]; acc[(rows - 1 - Math.round(L / 255 * (rows - 1))) * 160 + x]++; }
+      else for (let k = 0; k < 3; k++) acc[(rows - 1 - Math.round(d[i + k] / 255 * (rows - 1))) * 480 + k * 160 + x]++;
+    }
+    const tint = chans === 1 ? [[255, 214, 170]] : [[255, 90, 90], [90, 230, 110], [100, 160, 255]];
+    for (let j = 0; j < acc.length; j++) { if (!acc[j]) continue; const col = tint[chans === 1 ? 0 : Math.floor((j % (160 * chans)) / 160)], a = Math.min(255, 50 + acc[j] * 45); img.data.set([col[0], col[1], col[2], a], j * 4); }
+    const tmp = document.createElement('canvas'); tmp.width = img.width; tmp.height = rows; tmp.getContext('2d').putImageData(img, 0, 0);
+    scX.imageSmoothingEnabled = true; scX.drawImage(tmp, 0, 8, W, H - 16);
+  } else if (SCOPE === 'hist') {
+    const bins = [new Float32Array(64), new Float32Array(64), new Float32Array(64)];
+    for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) bins[k][d[i + k] >> 2]++;
+    const mx = Math.max(1, ...bins.map(b => Math.max(...b))); scX.globalCompositeOperation = 'lighter';
+    ['rgba(255,80,80,.75)', 'rgba(80,220,100,.75)', 'rgba(90,150,255,.75)'].forEach((c2, k) => {
+      scX.fillStyle = c2; scX.beginPath(); scX.moveTo(0, H);
+      for (let b = 0; b < 64; b++) scX.lineTo(b / 63 * W, H - Math.sqrt(bins[k][b] / mx) * (H - 8)); scX.lineTo(W, H); scX.fill();
+    });
+  } else {
+    // vectorscope: hue around the circle, saturation outward; the line is where skin tones fall
+    const cx = W / 2, cy = H / 2, R = H / 2 - 8;
+    scX.beginPath(); scX.arc(cx, cy, R, 0, 7); scX.stroke(); scX.beginPath(); scX.arc(cx, cy, R / 2, 0, 7); scX.stroke();
+    scX.strokeStyle = 'rgba(255,170,110,.45)'; scX.beginPath(); scX.moveTo(cx, cy); const sk = -123 * Math.PI / 180 + Math.PI; scX.lineTo(cx + Math.cos(sk) * R, cy - Math.sin(sk) * R); scX.stroke();
+    const tg = { R: [255, 0, 0], Mg: [255, 0, 255], B: [0, 0, 255], Cy: [0, 255, 255], G: [0, 255, 0], Yl: [255, 255, 0] }, uv = (r, g2, b) => [(-.1687 * r - .3313 * g2 + .5 * b) / 255, (.5 * r - .4187 * g2 - .0813 * b) / 255];
+    scX.fillStyle = 'rgba(255,255,255,.4)'; scX.font = '600 10px Geist, sans-serif';
+    for (const [n, c2] of Object.entries(tg)) { const [u, v2] = uv(...c2.map(x => x * .75)); scX.strokeRect(cx + u * 2 * R - 4, cy - v2 * 2 * R - 4, 8, 8); scX.fillText(n, cx + u * 2 * R + 6, cy - v2 * 2 * R + 3); }
+    const img = scX.getImageData(0, 0, W, H);
+    for (let i = 0; i < d.length; i += 8) { const [u, v2] = uv(d[i], d[i + 1], d[i + 2]); const x = Math.round(cx + u * 2 * R), y = Math.round(cy - v2 * 2 * R); if (x < 0 || y < 0 || x >= W || y >= H) continue; const j = (y * W + x) * 4; img.data[j] = Math.min(255, img.data[j] + 40 + d[i] / 6); img.data[j + 1] = Math.min(255, img.data[j + 1] + 40 + d[i + 1] / 6); img.data[j + 2] = Math.min(255, img.data[j + 2] + 40 + d[i + 2] / 6); img.data[j + 3] = 255; }
+    scX.putImageData(img, 0, 0);
+  }
+}
+$('#bScopes').addEventListener('click', () => {
+  const on = $('#scopes').hidden; $('#scopes').hidden = !on; $('#bScopes').setAttribute('aria-pressed', on);
+  SCOPE = on ? ($('#scopes [data-scope][aria-pressed="true"]') || {}).dataset.scope || 'wave' : null; if (on) { scT = 0; updateScopes(); }
+});
+$('#scopes').addEventListener('click', e => { const b = e.target.closest('[data-scope]'); if (!b) return; $$('#scopes [data-scope]').forEach(x => x.setAttribute('aria-pressed', x === b)); SCOPE = b.dataset.scope; scT = 0; updateScopes(); });
+{ const base = renderFrame; renderFrame = function (t) { base(t); updateScopes(); }; }
 
 /* ---------------- landing ---------------- */
 const hasWork = () => !P.demo && P.clips.length > 0;
