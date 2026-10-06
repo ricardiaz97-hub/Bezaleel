@@ -299,6 +299,30 @@ ${HELP}
 void main() { vec4 c = texture(T, v); vec3 u = unp(c);
   vec3 l = texture(L, clamp(u, 0., 1.) * (uN - 1.) / uN + .5 / uN).rgb;
   o = vec4(mix(u, l, uMix) * c.a, c.a); }`;
+  /* Primary color grade, in the order a colorist works: white balance and exposure, levels (blacks and whites),
+     contrast around a pivot, shadows and highlights, lift / gamma / gain wheels, saturation and vibrance, then the
+     curves (master, then red, green and blue, baked into one 256-wide lookup texture). Works on unpremultiplied color. */
+  const GRADE_FS = `${HEAD}
+uniform sampler2D T; uniform sampler2D C; uniform float uCurve;
+uniform float uExp, uTemp, uTint, uCon, uPiv, uHi, uSh, uWh, uBl, uSat, uVib;
+uniform vec3 uLift, uGamma, uGain;
+${HELP}
+float luma(vec3 c) { return dot(c, vec3(.2126, .7152, .0722)); }
+void main() { vec4 s = texture(T, v); vec3 c = unp(s);
+  c *= vec3(1. + .16 * uTemp + .06 * uTint, 1. - .12 * uTint, 1. - .16 * uTemp + .06 * uTint);
+  c *= exp2(uExp);
+  float bp = -.1 * uBl, wp = 1. - .14 * uWh; c = (c - bp) / max(.05, wp - bp);
+  c = (c - uPiv) * (1. + uCon) + uPiv;
+  float L = luma(clamp(c, 0., 1.)), ws = 1. - smoothstep(0., .55, L), wh = smoothstep(.45, 1., L);
+  float nL = max(0., L + .28 * uSh * ws + .28 * uHi * wh); c *= L > 1e-4 ? nL / L : 1.; c += (L > 1e-4 ? 0. : nL);
+  c = c + uLift * (1. - clamp(c, 0., 1.));
+  c = c * (1. + uGain);
+  c = pow(max(c, 0.), 1. / max(vec3(.05), 1. + uGamma));
+  float Y = luma(c), sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  c = mix(vec3(Y), c, (1. + uSat) * (1. + uVib * (1. - clamp(sat, 0., 1.))));
+  c = clamp(c, 0., 1.);
+  if (uCurve > .5) { vec3 q = c * 255. / 256. + .5 / 256.; c = vec3(texture(C, vec2(q.r, .5)).r, texture(C, vec2(q.g, .5)).g, texture(C, vec2(q.b, .5)).b); }
+  o = vec4(c * s.a, s.a); }`;
   const COPY_FS = `${HEAD}
 uniform sampler2D T; void main() { o = texture(T, v); }`;
   const VS = `#version 300 es
@@ -391,6 +415,28 @@ in vec2 p; out vec2 v; void main() { v = p * .5 + .5; gl_Position = vec4(p, 0., 
       }
       return run(pr, [{ u: 'T', t: tex, unit: 0 }, { u: 'L', t: lt, unit: 2, d3: true }], p => { gl.uniform1f(U(p, 'uN'), lut.size); gl.uniform1f(U(p, 'uMix'), mix); });
     };
+    // g: the clip's grade; curve: a 256 x 1 RGBA table (or null for straight curves), cached by its key
+    const curves = new Map();
+    api.grade = (tex, gr, curve) => {
+      const pr = program('grade', GRADE_FS); if (!pr) return tex;
+      let ct = blank;
+      if (curve) {
+        ct = curves.get(curve.key);
+        if (!ct) {
+          if (curves.size > 24) { for (const t of curves.values()) gl.deleteTexture(t); curves.clear(); }
+          ct = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, ct); texParams(gl.TEXTURE_2D);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, curve.data); curves.set(curve.key, ct);
+        }
+      }
+      const n = k => +gr[k] || 0, v3 = (a, y) => [0, 1, 2].map(i => ((a && +a[i]) || 0) + (+y || 0));
+      return run(pr, [{ u: 'T', t: tex, unit: 0 }, { u: 'C', t: ct, unit: 3 }], p => {
+        gl.uniform1f(U(p, 'uCurve'), curve ? 1 : 0);
+        for (const [u, k] of [['uExp', 'exp'], ['uTemp', 'temp'], ['uTint', 'tint'], ['uCon', 'con'], ['uHi', 'hi'], ['uSh', 'sh'], ['uWh', 'wh'], ['uBl', 'bl'], ['uSat', 'sat'], ['uVib', 'vib']]) gl.uniform1f(U(p, u), n(k));
+        gl.uniform1f(U(p, 'uPiv'), gr.piv != null ? +gr.piv : .435);
+        const L = v3(gr.lift, gr.liftY).map(x => x * .25), G = v3(gr.gamma, gr.gammaY).map(x => x * .5), N = v3(gr.gain, gr.gainY).map(x => x * .5);
+        gl.uniform3f(U(p, 'uLift'), L[0], L[1], L[2]); gl.uniform3f(U(p, 'uGamma'), G[0], G[1], G[2]); gl.uniform3f(U(p, 'uGain'), N[0], N[1], N[2]);
+      });
+    };
     api.mix = (a, b, k, p) => {
       const d = TRX[k]; const pr = d && program('tr:' + k, trSource(d)); if (!pr) return b || a;
       return run(pr, [{ u: 'A', t: a || blank, unit: 0 }, { u: 'B', t: b || blank, unit: 1 }], q => {
@@ -402,7 +448,7 @@ in vec2 p; out vec2 v; void main() { v = p * .5 + .5; gl_Position = vec4(p, 0., 
     api.warm = () => {
       for (const k of Object.keys(FX)) program('fx:' + k, fxSource(FX[k]));
       for (const k of Object.keys(TRX)) program('tr:' + k, trSource(TRX[k]));
-      program('lut', LUT_FS); program('copy', COPY_FS);
+      program('lut', LUT_FS); program('copy', COPY_FS); program('grade', GRADE_FS);
       return api.errors.length === 0;
     };
     return api;
