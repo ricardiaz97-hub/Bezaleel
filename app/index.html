@@ -344,17 +344,23 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .lp-nav nav a:hover{color:var(--fg)}
 .btn.lg{padding:13px 24px;font-size:1rem}
 
-.lp-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,4vw,56px);align-items:center;min-height:min(calc(100dvh - 70px),900px);padding-block:clamp(40px,6vw,72px) clamp(48px,6vw,80px)}
+.lp-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;min-height:min(calc(100dvh - 70px),900px);padding-block:clamp(40px,6vw,72px) clamp(48px,6vw,80px)}
 .lp h1{margin:0;font-weight:300;font-size:clamp(2.6rem,1.3rem + 3.6vw,4.6rem);line-height:1.02;letter-spacing:-.05em;text-wrap:balance}
 .lp h1 b{display:block;font-weight:500;color:var(--accent);white-space:nowrap}
 .lp h2{margin:0;font-weight:300;font-size:clamp(2.1rem,1.3rem + 2.6vw,3.6rem);line-height:1.05;letter-spacing:-.045em;text-wrap:balance}
 .lp h3{margin:0;font-size:1.12rem;font-weight:500;letter-spacing:-.02em}
+/* the worship photo fills the hero, fading into the room on the left and at the bottom */
+.lp-photo{position:absolute;z-index:-1;top:-82px;bottom:0;left:50%;width:100vw;margin-left:-50vw;overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent 0,rgba(0,0,0,.35) 30%,#000 62%),linear-gradient(180deg,#000 70%,transparent);-webkit-mask-composite:source-in;mask:linear-gradient(90deg,transparent 0,rgba(0,0,0,.35) 30%,#000 62%) intersect,linear-gradient(180deg,#000 70%,transparent)}
+.lp-photo img{width:100%;height:100%;object-fit:cover;object-position:62% 40%;opacity:.95}
+.lp-hero > div:not(.lp-photo){position:relative}
 .lp-lead{font-size:clamp(1.04rem,.98rem + .3vw,1.2rem);color:var(--muted);max-width:38ch;line-height:1.55;margin:26px 0 32px}
 .lp-cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .lp-resume{display:grid;gap:2px;text-align:left}
 .lp-resume small{font-weight:400;font-size:.78rem;opacity:.75}
-.lp-shot{margin:0 calc(-1 * clamp(16px,4vw,40px)) 0 0;perspective:1600px}
-.lp-shot .frame{padding:8px;border-radius:24px;transform:rotateY(-9deg) rotateX(3deg);transform-origin:left center}
+.lp-shot{margin:0;perspective:1800px}
+.lp-shot .frame{padding:8px;border-radius:24px;transform:rotateX(12deg) scale(.96);transform-origin:center top;transition:transform 1200ms var(--ease)}
+.lp-shot.in .frame{transform:rotateX(0) scale(1)}
+.lp-product{padding-top:0;margin-top:clamp(-40px,-3vw,-16px)}
 .lp-shot img{display:block;width:100%;height:auto;border-radius:17px}
 
 .lp-sec{position:relative;padding-block:clamp(64px,9vw,128px)}
@@ -378,12 +384,17 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .cell-beat img{display:block;height:auto;aspect-ratio:1872/743;align-self:start;width:calc(100% + 28px);margin:18px -28px 0 0;border-radius:14px 0 0 0;border:1px solid rgba(255,255,255,.08);border-width:1px 0 0 1px}
 .cell-fx{grid-column:span 2;grid-row:span 2;padding-bottom:0;display:flex;flex-direction:column}
 .cell-fx img{display:block;width:100%;height:auto;aspect-ratio:636/916;margin-top:auto;border-radius:14px 14px 0 0;border:1px solid rgba(255,255,255,.08);border-bottom:0}
-.cell-person{grid-column:span 2;background:radial-gradient(90% 80% at 100% 0%,rgba(255,130,50,.35),transparent 65%),linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.025)),rgba(22,20,18,.42)}
+.cell-person{grid-column:span 4;position:relative;padding:0;min-height:380px;align-content:end}
+.cell-person img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.cell-person .cap{position:relative;padding:28px;display:grid;gap:10px;background:linear-gradient(0deg,rgba(10,9,8,.92) 20%,rgba(10,9,8,.6) 65%,transparent)}
+.cell-person .cap p{color:#D7D0C6}
 .cell-trans{grid-column:span 2}
-.cell-lut{grid-column:span 3}
+.fam-photo{margin:44px 0 0;border-radius:28px;overflow:hidden;border:1px solid rgba(255,255,255,.1);aspect-ratio:21/8}
+.fam-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 55%;display:block}
+.cell-lut{grid-column:span 2}
 .cell-lut .looks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
 .cell-lut .looks i{aspect-ratio:1;border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-.cell-audio{grid-column:span 3}
+.cell-audio{grid-column:span 2}
 
 .how{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,4vw,56px);border-top:1px solid rgba(255,255,255,.1)}
 .how li{padding-top:26px;display:grid;gap:12px;align-content:start}
@@ -423,10 +434,12 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .lp-shot[data-reveal]{transform:translateY(40px) scale(.97)}
 .lp-shot[data-reveal].in{transform:none}
 
-@media (max-width:1100px){.cell-beat,.cell-lut,.cell-audio{grid-column:span 6}.cell-fx,.cell-person,.cell-trans{grid-column:span 3}.cell-fx{grid-row:span 1}.cell-fx img{aspect-ratio:auto;height:280px;object-fit:cover;object-position:top}}
+@media (max-width:1100px){.cell-beat,.cell-person{grid-column:span 6}.cell-fx,.cell-trans,.cell-lut,.cell-audio{grid-column:span 3}.cell-fx{grid-row:span 1}.cell-fx img{aspect-ratio:auto;height:280px;object-fit:cover;object-position:top}}
 @media (max-width:980px){
-  .lp-hero{grid-template-columns:1fr;min-height:0}
-  .lp-shot{margin-right:0}.lp-shot .frame{transform:none}
+  .lp-hero{grid-template-columns:1fr;min-height:min(100dvh,760px);align-items:end}
+  .lp-photo{-webkit-mask:linear-gradient(180deg,#000 35%,transparent 92%);mask:linear-gradient(180deg,#000 35%,transparent 92%)}.lp-photo img{object-position:62% 30%}
+  .fam-photo{aspect-ratio:4/3}
+  .lp-shot .frame{transform:none}
   .promise,.fam{grid-template-columns:1fr}
   .fmts{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lp-beam{right:-6vw;width:60vw;opacity:.6}
@@ -489,6 +502,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
   <div class="lp-wrap">
     <section class="lp-hero">
+      <div class="lp-photo" aria-hidden="true"><img src="brand/photos/worship.webp" alt="" width="1600" height="816"></div>
       <div>
         <h1 data-reveal>Edita el culto.<b>Compártelo hoy.</b></h1>
         <p class="lp-lead" data-reveal style="--d:120ms">Un editor de video gratis para equipos de alabanza. Sin marcas de agua y sin funciones bloqueadas.</p>
@@ -498,7 +512,10 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
           <button class="btn lg" data-lp="open" id="lpDemo">Ver el ejemplo</button>
         </div>
       </div>
-      <figure class="lp-shot" data-reveal style="--d:160ms"><div class="frame glass"><img src="brand/shot-editor.webp" alt="El editor de Bezaleel: un título sobre un fondo naranja, con títulos, video y una canción en la línea de tiempo" width="1800" height="1080"></div></figure>
+    </section>
+
+    <section class="lp-sec lp-product">
+      <figure class="lp-shot" data-reveal><div class="frame glass"><img src="brand/shot-editor.webp" alt="El editor de Bezaleel: un título sobre un fondo naranja, con títulos, video y una canción en la línea de tiempo" width="1800" height="1080" loading="lazy"></div></figure>
     </section>
 
     <section class="lp-sec" id="formatos">
@@ -517,7 +534,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <div class="bento">
         <div class="cell glass cell-beat" data-spot data-reveal><span class="ic" data-ic="music"></span><h3>Al ritmo de la música</h3><p>Bezaleel encuentra los golpes de la canción. Los efectos, cortes y transiciones caen a tiempo. En canciones lentas, marca el ritmo tocando.</p><img src="brand/shot-timeline.webp" alt="Línea de tiempo con una canción y sus golpes marcados en amarillo" width="1872" height="743" loading="lazy"></div>
         <div class="cell glass cell-fx" data-spot data-reveal style="--d:80ms"><span class="ic" data-ic="spark"></span><h3>Efectos sin candado</h3><p>Aberración cromática, sacudida RGB, glitch, VHS, destellos y zoom warp. Arrástralos sobre un clip.</p><img src="brand/shot-effects.webp" alt="Pestaña de efectos con efectos al ritmo de la música" width="636" height="916" loading="lazy"></div>
-        <div class="cell glass cell-person" data-spot data-reveal><span class="ic" data-ic="user"></span><h3>Persona sin pantalla verde</h3><p>El título pasa detrás de quien canta o predica. También puedes desenfocar o cambiar el fondo.</p></div>
+        <div class="cell glass cell-person" data-spot data-reveal><img src="brand/photos/demo-detras.webp" alt="Un predicador en Taber Olocuilta con el título ERES FIEL pasando detrás de su cabeza, hecho con Bezaleel" width="1400" height="788" loading="lazy"><div class="cap"><span class="ic" data-ic="user"></span><h3>Persona sin pantalla verde</h3><p>El título pasa detrás de quien canta o predica, como en esta foto de un domingo en Taber. También puedes desenfocar o cambiar el fondo.</p></div></div>
         <div class="cell glass cell-trans" data-spot data-reveal style="--d:80ms"><span class="ic" data-ic="join"></span><h3>Transiciones en las uniones</h3><p>Suelta una transición entre dos clips. Fundido, warp, glitch, barrido y 13 más.</p></div>
         <div class="cell glass cell-lut" data-spot data-reveal><span class="ic" data-ic="sliders"></span><h3>Color y LUTs</h3><p>Diez looks listos, o importa los LUT de tu cámara en formato .cube.</p><div class="looks" aria-hidden="true"><i style="background:linear-gradient(135deg,#1d3b47,#e89a5b)"></i><i style="background:linear-gradient(135deg,#2b2621,#d9b382)"></i><i style="background:linear-gradient(135deg,#0f1f2e,#7fb2c9)"></i><i style="background:linear-gradient(135deg,#3a1f12,#ff8a42)"></i><i style="background:linear-gradient(135deg,#1c1c1c,#bdbdbd)"></i></div></div>
         <div class="cell glass cell-audio" data-spot data-reveal style="--d:80ms"><span class="ic" data-ic="wave"></span><h3>Audio limpio</h3><p>Ecualizador de cinco bandas, reducción de ruido y modo voz, para que la prédica se oiga clara aunque el micrófono no sea el mejor.</p></div>
@@ -545,6 +562,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
     <section class="lp-sec" id="familia">
       <h2 data-reveal>Hecho en casa</h2>
       <p data-reveal style="--d:80ms">Bezaleel nace en Philly, el ministerio de alabanza de Taber Olocuilta, junto a otras herramientas gratis para equipos de alabanza.</p>
+      <figure class="fam-photo" data-reveal><img src="brand/photos/comunidad.webp" alt="Un domingo en Taber Olocuilta: el equipo de jóvenes con camisas azules frente a la congregación" width="1600" height="1070" loading="lazy"></figure>
       <div class="fam">
         <div class="fam-hero glass" data-spot data-reveal><img src="brand/philly.webp" alt="Philly" width="640" height="340" loading="lazy"><div><h3>Philly</h3><p>El ministerio de alabanza que hace Bezaleel. Músicos, cantantes y equipo de medios sirviendo cada domingo.</p></div></div>
         <div class="fam-list">
