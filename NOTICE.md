@@ -17,3 +17,7 @@ Noise reduction uses [RNNoise](https://github.com/xiph/rnnoise) (Xiph.Org, Mozil
 Person detection uses Google's [MediaPipe Tasks Vision](https://github.com/google-ai-edge/mediapipe) and its selfie segmentation model, both under the Apache License 2.0. The files and the license are in `app/vendor/mediapipe/`.
 
 The Windows program is built with [Electron](https://www.electronjs.org/) (MIT License) and uses [electron-updater](https://www.electron.build/) (MIT License).
+
+# Logos
+
+The logos in `app/brand/` (Philly, Taber Olocuilta, Arca and Arpa) belong to their ministries and projects. They are not covered by the GPL-3.0 license of Bezaleel's code. Forks may keep the files in the history, but should not present themselves as these ministries or projects.
