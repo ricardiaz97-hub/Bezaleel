@@ -243,28 +243,73 @@
     return { id: look.id, n: look.n, size: N, data, builtin: true };
   }
   // Parses an Adobe/Resolve .cube 3D LUT. Throws an Error with a message for the user.
+  /* Reads a .cube file. Handles plain 3D LUTs, 1D LUTs, and DaVinci-style files that carry a 1D "shaper" before the
+     3D table; anything that is not a plain 0..1 3D table is resampled into one, which is what the GPU uses. */
   function parseCube(text, name) {
-    let N = 0, min = [0, 0, 0], max = [1, 1, 1], title = '';
-    const vals = [];
-    for (const raw of text.split(/\r?\n/)) {
+    text = String(text).replace(/^\uFEFF/, '');
+    let N3 = 0, N1 = 0, title = '';
+    let min3 = [0, 0, 0], max3 = [1, 1, 1], min1 = [0, 0, 0], max1 = [1, 1, 1];
+    const vals = [], nums = l => l.split(/\s+/).slice(1).map(Number);
+    for (const raw of text.split(/\r\n|\r|\n/)) {
       const line = raw.trim(); if (!line || line[0] === '#') continue;
       const up = line.toUpperCase();
       if (up.startsWith('TITLE')) { title = line.replace(/^TITLE\s*/i, '').replace(/^"|"$/g, ''); continue; }
-      if (up.startsWith('LUT_1D_SIZE')) throw new Error('Es un LUT 1D. Bezaleel usa LUTs 3D (.cube con LUT_3D_SIZE).');
-      if (up.startsWith('LUT_3D_SIZE')) { N = parseInt(line.split(/\s+/)[1], 10); continue; }
-      if (up.startsWith('DOMAIN_MIN')) { min = line.split(/\s+/).slice(1, 4).map(Number); continue; }
-      if (up.startsWith('DOMAIN_MAX')) { max = line.split(/\s+/).slice(1, 4).map(Number); continue; }
+      if (up.startsWith('LUT_1D_SIZE')) { N1 = parseInt(line.split(/\s+/)[1], 10); continue; }
+      if (up.startsWith('LUT_3D_SIZE')) { N3 = parseInt(line.split(/\s+/)[1], 10); continue; }
+      if (up.startsWith('LUT_1D_INPUT_RANGE')) { const [a, b] = nums(line); min1 = [a, a, a]; max1 = [b, b, b]; continue; }
+      if (up.startsWith('LUT_3D_INPUT_RANGE')) { const [a, b] = nums(line); min3 = [a, a, a]; max3 = [b, b, b]; continue; }
+      if (up.startsWith('DOMAIN_MIN')) { min3 = nums(line).slice(0, 3); min1 = min3.slice(); continue; }
+      if (up.startsWith('DOMAIN_MAX')) { max3 = nums(line).slice(0, 3); max1 = max3.slice(); continue; }
       if (/^[A-Z_]/.test(up)) continue;
-      const p = line.split(/\s+/); if (p.length >= 3) vals.push(+p[0], +p[1], +p[2]);
+      const p = line.split(/\s+/).map(Number); if (p.length >= 3 && p.slice(0, 3).every(isFinite)) vals.push(p[0], p[1], p[2]);
     }
-    if (!(N >= 2 && N <= 129)) throw new Error('No se encontró el tamaño del LUT (LUT_3D_SIZE).');
-    if (vals.length !== N * N * N * 3) throw new Error(`El archivo está incompleto: se esperaban ${N * N * N} colores y tiene ${vals.length / 3 | 0}.`);
-    const data = new Uint8Array(N * N * N * 4);
-    for (let i = 0, j = 0; i < vals.length; i += 3, j += 4) {
-      for (let c = 0; c < 3; c++) { const x = (vals[i + c] - min[c]) / ((max[c] - min[c]) || 1); data[j + c] = Math.round(Math.min(1, Math.max(0, isFinite(x) ? x : 0)) * 255); }
-      data[j + 3] = 255;
+    if (!(N3 >= 2 && N3 <= 129) && !(N1 >= 2 && N1 <= 65536)) throw new Error('No se encontró el tamaño del LUT (LUT_3D_SIZE o LUT_1D_SIZE).');
+    if (!(N3 >= 2 && N3 <= 129)) N3 = 0; if (!(N1 >= 2)) N1 = 0;
+    const need = (N1 + N3 * N3 * N3) * 3;
+    if (vals.length < need) throw new Error(`El archivo está incompleto: se esperaban ${need / 3} colores y tiene ${vals.length / 3 | 0}.`);
+    const v1 = vals.slice(0, N1 * 3), v3 = vals.slice(N1 * 3, need);
+    const unit = (a, b) => a.every(x => x === 0) && b.every(x => x === 1);
+    const S = N3 || 33, data = new Uint8Array(S * S * S * 4), b8 = x => Math.round(Math.min(1, Math.max(0, isFinite(x) ? x : 0)) * 255);
+    if (!N1 && unit(min3, max3)) {
+      for (let i = 0, j = 0; i < v3.length; i += 3, j += 4) { data[j] = b8(v3[i]); data[j + 1] = b8(v3[i + 1]); data[j + 2] = b8(v3[i + 2]); data[j + 3] = 255; }
+    } else {
+      const s1 = (x, c) => { const t = Math.min(N1 - 1, Math.max(0, (x - min1[c]) / ((max1[c] - min1[c]) || 1) * (N1 - 1))), i = Math.min(N1 - 2, Math.floor(t)), f = t - i; return v1[i * 3 + c] * (1 - f) + v1[(i + 1) * 3 + c] * f; };
+      const at = (r, g, b, c) => v3[((b * N3 + g) * N3 + r) * 3 + c];
+      const s3 = rgb => {
+        const q = rgb.map((x, c) => Math.min(N3 - 1, Math.max(0, (x - min3[c]) / ((max3[c] - min3[c]) || 1) * (N3 - 1))));
+        const i = q.map(x => Math.min(N3 - 2, Math.floor(x))), f = q.map((x, k) => x - i[k]), out = [0, 0, 0];
+        for (let c = 0; c < 3; c++) for (let dz = 0; dz < 2; dz++) for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++)
+          out[c] += at(i[0] + dx, i[1] + dy, i[2] + dz, c) * (dx ? f[0] : 1 - f[0]) * (dy ? f[1] : 1 - f[1]) * (dz ? f[2] : 1 - f[2]);
+        return out;
+      };
+      for (let b = 0, j = 0; b < S; b++) for (let g = 0; g < S; g++) for (let r = 0; r < S; r++, j += 4) {
+        let x = [r / (S - 1), g / (S - 1), b / (S - 1)];
+        if (N1) x = x.map((y, c) => s1(y, c));
+        if (N3) x = s3(x);
+        data[j] = b8(x[0]); data[j + 1] = b8(x[1]); data[j + 2] = b8(x[2]); data[j + 3] = 255;
+      }
     }
-    return { n: title || name || 'LUT', size: N, data };
+    return { n: title || name || 'LUT', size: S, data };
+  }
+
+  // The .cube files inside a .zip, the way LUT packs are usually shared (stored or deflated entries).
+  async function unzipCubes(blob) {
+    const buf = new Uint8Array(await blob.arrayBuffer()), dv = new DataView(buf.buffer);
+    let e = buf.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('El .zip está dañado.');
+    const count = dv.getUint16(e + 10, true), out = [], td = new TextDecoder(); let p = dv.getUint32(e + 16, true);
+    for (let i = 0; i < count && dv.getUint32(p, true) === 0x02014b50; i++) {
+      const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+      const name = td.decode(buf.subarray(p + 46, p + 46 + nl)); p += 46 + nl + xl + cl;
+      const base = name.split('/').pop();
+      if (!/\.cube$/i.test(base) || /(^|\/)__MACOSX\//.test(name) || base.startsWith('._')) continue;
+      const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true), data = buf.subarray(start, start + size);
+      let text = null;
+      if (method === 0) text = td.decode(data);
+      else if (method === 8 && typeof DecompressionStream !== 'undefined') text = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      if (text != null) out.push({ name: base, text });
+    }
+    return out;
   }
 
   /* ---------- WebGL 2 engine ---------- */
@@ -476,5 +521,5 @@ in vec2 p; out vec2 v; void main() { v = p * .5 + .5; gl_Position = vec4(p, 0., 
     return api;
   }
 
-  window.BezaleelFX = { FX, TRX, LUT_LOOKS, buildLut, parseCube, makeEngine };
+  window.BezaleelFX = { FX, TRX, LUT_LOOKS, buildLut, parseCube, unzipCubes, makeEngine };
 })();
