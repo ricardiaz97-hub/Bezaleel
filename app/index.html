@@ -62,6 +62,9 @@ svg.f{fill:currentColor;stroke:none}
 .brand{display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.24em}
 .brand b{font-weight:500;font-size:13.5px;letter-spacing:.24em}
 .brand img{display:block;height:21px;width:auto;margin-right:4px}
+.brand .mk{display:none}
+.brand{border:0;background:none;padding:0;cursor:pointer;color:inherit}
+#bExport .xl{margin-left:-7px;white-space:pre}
 .brand span{font-weight:600;font-size:14px;color:var(--accent)}
 
 .top .pname{background:transparent;border:1px solid transparent;border-radius:999px;padding:6px 12px;font-weight:500;min-width:0;width:220px}
@@ -460,27 +463,85 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
   .tabs{padding-inline:2px}.tabs::after{left:2px;width:calc((100% - 4px) / 5)}
 
 }
+/* ---------- phone editor (CapCut / Reels style) ----------
+   The preview stays fixed on top; the timeline scrolls under a playhead fixed at the centre; a toolbar sits at the
+   bottom; library and clip settings open as sheets over the timeline, so the video stays in sight while you edit. */
+.mbar,.sheet-h{display:none}
 @media (max-width:900px){
-  body{overflow:auto}
-  .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"top" "view" "tl" "insp" "lib"}
-  .stagebox{padding:10px 0}
-  .tl{height:auto}
-  .tl-body{grid-template-columns:96px minmax(0,1fr)}
-  .ovw{margin-left:106px}
-  .tl-grip{display:none}
-  .head b{font-size:11px}
-  .lib,.insp{border:0;border-top:1px solid var(--line)}
-  .lib .tabpane{max-height:none}
-  .tc{min-width:0;font-size:12.5px}
-  .tbtns{margin:0}
-  .zoom{margin-left:0}
-  .zoom input{width:90px}
-  .top .pname{width:150px}
+  html,body{overscroll-behavior:none}
+  body{overflow:hidden;-webkit-tap-highlight-color:transparent}
+  .app{height:100dvh;gap:6px;padding:calc(6px + env(safe-area-inset-top,0px)) 6px 0;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) var(--mtl,clamp(190px,34dvh,320px)) auto;grid-template-areas:"top" "view" "tl" "mbar"}
+  .top{padding:5px 6px 5px 12px;gap:6px;flex-wrap:nowrap}
+  .brand .full{display:none}.brand .mk{display:block;height:24px}
+  .top .pname{flex:1;width:auto;min-width:60px;padding:5px 8px;font-size:14px}
+  .top-mid{flex:none}
+  .top-mid .ib{width:32px;height:32px}
   .saved{display:none}
-  #bImport{margin-left:auto}
-  .top .btn{padding:7px 11px}
+  #bImport{margin-left:0;padding:7px 10px}#bImport .lbl{display:none}
+  #bExport{padding:7px 12px;flex:none}#bExport .xl{display:none}
+  #bImport{flex:none;width:36px;height:36px;padding:0;justify-content:center}
+  .view{border-radius:16px}
+  .stagebox{padding:6px}
+  .transport{padding:4px 8px;gap:6px;justify-content:space-between;flex-wrap:nowrap}
+  .tc{min-width:0;font-size:11.5px}
+  .tc .dim,.tc #tcEnd{display:none}
+  .tbtns{margin:0}
+  .tbtns #bPrevF,.tbtns #bNextF{display:none}
+  .tright #bShot{display:none}
+  /* timeline: no tool row, slim track heads, tracks a little shorter, playhead fixed at the centre */
+  .tl{border-radius:16px}
+  .tl-tools,.ovw,.tl-grip{display:none}
+  .tl-body{grid-template-columns:14px minmax(0,1fr);grid-template-rows:22px minmax(0,1fr)}
+  .corner{font-size:0;padding:0}
+  #ruler{height:22px}
+  .head{padding:0;justify-content:center}
+  .head b,.head button{display:none}
+  .head i{margin:6px 0}
+  .lane,.head{height:calc(var(--h) * .82)}
+  .tl-scroll{touch-action:pan-x;overscroll-behavior-x:contain;scrollbar-width:none}
+  .tl-scroll::-webkit-scrollbar{display:none}
+  .clip{touch-action:pan-x;border-radius:7px}
+  .clip .h{width:26px;touch-action:none}
+  .clip .h::after{left:10px;opacity:0}
+  .clip.sel .h{background:rgba(255,107,26,.92)}
+  .clip.sel .h.l{border-radius:7px 0 0 7px}.clip.sel .h.r{border-radius:0 7px 7px 0}
+  .clip.sel .h::after{opacity:1;background:#1C0B02;left:11px;width:4px}
+  .clip.lifted{transform:scale(1.04);box-shadow:inset 0 0 0 2px var(--accent),0 12px 24px -8px #000;z-index:6;transition:transform 160ms var(--ease)}
+  .ph{width:2px;margin-left:-1px;background:#FFF;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .ph::before{content:"";position:absolute;top:-1px;left:50%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#FFF}
+  /* bottom toolbar */
+  .mbar{grid-area:mbar;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));margin:0 -6px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border-top:1px solid var(--line)}
+  .mbar::-webkit-scrollbar{display:none}
+  .mbar[hidden]{display:none!important}
+  .mbar button{flex:1 0 52px;display:grid;justify-items:center;gap:4px;padding:7px 2px;border:0;border-radius:14px;background:none;color:var(--muted);font-size:10.5px;letter-spacing:-.02em;font-weight:500;white-space:nowrap;user-select:none;-webkit-user-select:none;transition:transform 120ms var(--ease),background-color 120ms,color 120ms}
+  .mbar button svg{width:22px;height:22px}
+  .mbar button:active{transform:scale(.92);background:rgba(255,255,255,.07);color:var(--fg)}
+  .mbar button.on{color:var(--accent)}
+  .mbar button.danger{color:var(--danger)}
+  .mbar button:disabled{opacity:.35}
+  /* sheets: the library and the clip settings slide up over the timeline */
+  .lib,.insp{position:fixed;z-index:25;left:6px;right:6px;top:var(--sheet-top,46dvh);bottom:0;border-radius:22px 22px 0 0;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03)),rgba(22,20,18,.82);backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);border:1px solid rgba(255,255,255,.12);border-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -20px 50px -20px rgba(0,0,0,.9);transform:translateY(105%);visibility:hidden;transition:transform 340ms cubic-bezier(.32,.72,0,1),visibility 0s 340ms;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .app[data-sheet="lib"] .lib,.app[data-sheet="insp"] .insp{transform:none;visibility:visible;transition:transform 340ms cubic-bezier(.32,.72,0,1),visibility 0s}
+  .insp{overflow:auto;overscroll-behavior:contain}
+  .lib .tabpane{overscroll-behavior:contain}
+  .sheet-h{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 12px 6px 18px;background:linear-gradient(180deg,rgba(28,26,24,.96) 70%,rgba(28,26,24,0))}
+  .sheet-h::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:rgba(255,255,255,.25)}
+  .sheet-h b{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .sheet-h button{border:0;border-radius:999px;padding:7px 14px;background:rgba(255,255,255,.1);color:var(--fg);font-weight:600;font-size:13px}
+  .lib .tabs{margin-top:0}
+  .ih{padding-top:6px}
+  .ih .acts{display:none}
+  .tabs button{font-size:12px;padding-block:8px}
+  .tabs button span:last-child{font-size:11px}
   .macts{opacity:1}
-  .tabs button{font-size:12px;padding-block:10px}
+  .mcard .macts button{padding:7px 10px;font-size:12.5px}
+  /* bigger targets and no zoom-on-focus in forms (iOS zooms inputs under 16px) */
+  input[type=text],input[type=number],select,textarea{font-size:16px}
+  input[type=range]{height:30px}
+  input[type=range]::-webkit-slider-thumb{width:22px;height:22px;margin-top:-9px}
+  .seg button{padding:9px 4px}
+  .chip{padding:7px 13px}
+  details.sec>summary{padding:14px 18px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (prefers-reduced-transparency:reduce){
@@ -594,7 +655,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
 <div class="app" id="app" hidden>
   <header class="top">
-    <button class="brand" id="bHome" title="Volver a la página de inicio"><img src="brand/bezaleel-lockup.webp" alt="Bezaleel" width="1000" height="177"></button>
+    <button class="brand" id="bHome" title="Volver a la página de inicio"><img class="full" src="brand/bezaleel-lockup.webp" alt="Bezaleel" width="1000" height="177"><img class="mk" src="brand/bezaleel-mark.webp" alt="Bezaleel" width="256" height="237"></button>
     <input id="pName" class="pname" type="text" aria-label="Nombre del proyecto" value="Mi video">
     <div class="top-mid">
       <button class="ib" id="bUndo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer" data-ic="undo"></button>
@@ -602,10 +663,11 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
     </div>
     <span class="saved" id="saved">Se guarda solo en este navegador</span>
     <label class="btn" id="bImport" for="fileIn" role="button" tabindex="0"><span data-ic="upload"></span><span class="lbl">Importar</span></label>
-    <button class="btn primary" id="bExport"><span data-ic="export"></span>Exportar video</button>
+    <button class="btn primary" id="bExport"><span data-ic="export"></span>Exportar<span class="xl"> video</span></button>
   </header>
 
   <aside class="lib" aria-label="Biblioteca">
+    <div class="sheet-h"><b>Biblioteca</b><button data-close>Listo</button></div>
     <div class="tabs" role="tablist" id="tabs">
       <button role="tab" id="tb-media" title="Medios" data-tab="media" aria-selected="true"><span data-ic="film"></span><span>Medios</span></button>
       <button role="tab" id="tb-titles" title="Títulos" data-tab="titles" aria-selected="false"><span data-ic="text"></span><span>Títulos</span></button>
@@ -696,6 +758,26 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
     </div>
     <div class="ovw" id="ovw" title="Vista de todo el proyecto: arrastra el recuadro para moverte, o sus bordes para acercar y alejar"><canvas id="ovwC"></canvas><div class="ovw-win" id="ovwWin"><i class="l"></i><i class="r"></i></div></div>
   </section>
+
+  <!-- phone toolbar: what you can add, or what you can do with the selected clip -->
+  <nav class="mbar" id="mbarMain" aria-label="Herramientas">
+    <button data-m="media"><span data-ic="film"></span>Medios</button>
+    <button data-m="titles"><span data-ic="text"></span>Texto</button>
+    <button data-m="fx"><span data-ic="spark"></span>Efectos</button>
+    <button data-m="tr"><span data-ic="join"></span>Transiciones</button>
+    <button data-m="bgs"><span data-ic="image"></span>Fondos</button>
+    <button data-m="split"><span data-ic="split"></span>Dividir</button>
+    <button data-m="project"><span data-ic="sliders"></span>Proyecto</button>
+  </nav>
+  <nav class="mbar" id="mbarClip" aria-label="Clip seleccionado" hidden>
+    <button data-m="edit"><span data-ic="sliders"></span>Ajustes</button>
+    <button data-m="split"><span data-ic="split"></span>Dividir</button>
+    <button data-m="fx"><span data-ic="spark"></span>Efectos</button>
+    <button data-m="tr"><span data-ic="join"></span>Transición</button>
+    <button data-m="dup"><span data-ic="dup"></span>Duplicar</button>
+    <button data-m="del" class="danger"><span data-ic="trash"></span>Eliminar</button>
+    <button data-m="done"><span data-ic="check"></span>Listo</button>
+  </nav>
 </div>
 
 <div id="pool" aria-hidden="true"></div>
@@ -758,6 +840,7 @@ const IC = {
   spark: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z',
   unlink: 'M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 4 8M3 3l18 18',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
   music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
 };
 function svg(n) { const d = IC[n] || ''; const f = d.startsWith('f:'); return `<svg viewBox="0 0 24 24" class="${f ? 'f' : ''}" aria-hidden="true"><path d="${f ? d.slice(2) : d}"/></svg>`; }
@@ -1169,7 +1252,7 @@ function fitStage() {
   const portrait = cv.height > cv.width && !narrow;
   app.classList.toggle('portrait', portrait);
   if (portrait) { const rh = box.clientHeight - 28; const want = clamp(Math.round(rh * cv.width / cv.height) + 28, 360, Math.round(window.innerWidth * .45)); if (parseInt(app.style.getPropertyValue('--vw'), 10) !== want) app.style.setProperty('--vw', want + 'px'); }
-  const bw = box.clientWidth - (narrow ? 0 : 28), bh = narrow ? Math.min(window.innerHeight * .55, 560) : box.clientHeight - 28;
+  const bw = box.clientWidth - (narrow ? 12 : 28), bh = box.clientHeight - (narrow ? 12 : 28);
   const r = cv.width / cv.height; let w = bw, h = bw / r; if (h > bh) { h = bh; w = bh * r; }
   st.style.width = Math.max(40, Math.floor(w)) + 'px'; st.style.height = Math.max(40, Math.floor(h)) + 'px';
 }
@@ -1434,7 +1517,7 @@ function requestDraw() { if (drawQ || playing) return; drawQ = true; requestAnim
 /* ---------------- transport ---------------- */
 function updateTime() {
   $('#tcCur').textContent = tc(cur, P.fps); $('#tcEnd').textContent = tc(projectEnd(), P.fps); $('#corner').textContent = fmtS(cur);
-  placePlayhead(); drawRuler();
+  placePlayhead(); if (isMob()) followPlayhead(); drawRuler();
 }
 function updatePlayBtn() { const b = $('#bPlay'); b.innerHTML = svg(playing ? 'pause' : 'play'); b.setAttribute('aria-pressed', playing); b.setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir'); }
 function tick() {
@@ -1469,6 +1552,12 @@ const frame = () => 1 / P.fps;
 
 /* ---------------- timeline ---------------- */
 const tlScroll = $('#tlScroll'), tlInner = $('#tlInner'), lanesEl = $('#lanes'), ruler = $('#ruler');
+// Phone mode: the playhead stays at the centre of the timeline and the tracks scroll under it, as in CapCut.
+// Half a screen of empty space on each side lets the start and the end of the video reach the centre.
+const isMob = () => matchMedia('(max-width:900px)').matches;
+const padX = () => isMob() ? Math.round(tlScroll.clientWidth / 2) : 0;
+let progScroll = -1;
+function setScroll(x) { const v = Math.max(0, Math.round(x)); if (Math.abs(tlScroll.scrollLeft - v) < 1) return; progScroll = v; tlScroll.scrollLeft = v; }
 function buildTracks() {
   $('#heads').innerHTML = TRACKS.map(tr => {
     const ts = P.ts[tr.id] || {};
@@ -1483,7 +1572,8 @@ function gridStep() { const c = [.1, .2, .5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 
 function renderTimeline() {
   BEATS = projectBeats();
   const vw = tlScroll.clientWidth || 800;
-  tlInner.style.width = Math.max(vw, (projectEnd() + 20) * pps) + 'px';
+  const pad = padX(); lanesEl.style.marginLeft = pad ? pad + 'px' : '';
+  tlInner.style.width = (pad ? pad * 2 + Math.max(1, projectEnd() * pps) : Math.max(vw, (projectEnd() + 20) * pps)) + 'px';
   lanesEl.style.setProperty('--grid', (gridStep() * pps) + 'px');
   $$('.lane', lanesEl).forEach(l => { l.style.setProperty('--grid', (gridStep() * pps) + 'px'); l.innerHTML = ''; });
   for (const c of P.clips) { const l = laneEl(c.track); if (l) l.appendChild(clipEl(c)); }
@@ -1558,15 +1648,15 @@ function drawWave(cvs, c, m, wpx, hpx) {
   bt.times.forEach((s2, i) => { if (s2 < c.in || s2 > c.in + span) return; const one = (((i - bt.down) % 4) + 4) % 4 === 0; x.fillStyle = one ? 'rgba(247,201,72,.95)' : 'rgba(247,201,72,.45)'; x.fillRect(Math.round((s2 - c.in) / span * W), 0, one ? 2 : 1, H); });
 }
 function refreshClip(c) { const old = lanesEl.querySelector(`.clip[data-id="${c.id}"]`); const n = clipEl(c); if (old && old.parentNode.dataset.track === c.track) old.replaceWith(n); else { if (old) old.remove(); const l = laneEl(c.track); if (l) l.appendChild(n); } }
-function placePlayhead() { $('#ph').style.left = (cur * pps) + 'px'; drawOverview(); }
-function followPlayhead() { const x = cur * pps, sl = tlScroll.scrollLeft, w = tlScroll.clientWidth; if (x > sl + w - 40 || x < sl) tlScroll.scrollLeft = Math.max(0, x - 80); }
+function placePlayhead() { $('#ph').style.left = (cur * pps + padX()) + 'px'; drawOverview(); }
+function followPlayhead() { if (isMob()) { setScroll(cur * pps); return; } const x = cur * pps, sl = tlScroll.scrollLeft, w = tlScroll.clientWidth; if (x > sl + w - 40 || x < sl) tlScroll.scrollLeft = Math.max(0, x - 80); }
 function drawRuler() {
   const dpr = Math.min(2, window.devicePixelRatio || 1), w = ruler.clientWidth, h = 26;
   if (!w) return;
   if (ruler.width !== Math.round(w * dpr)) { ruler.width = Math.round(w * dpr); ruler.height = h * dpr; }
   const x = ruler.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
-  const sl = tlScroll.scrollLeft, step = gridStep(), minor = step / 5;
-  const t0 = Math.floor(sl / pps / minor) * minor, t1 = (sl + w) / pps;
+  const sl = tlScroll.scrollLeft - padX(), step = gridStep(), minor = step / 5;
+  const t0 = Math.max(0, Math.floor(sl / pps / minor) * minor), t1 = (sl + w) / pps;
   x.font = '600 10px "JetBrains Mono", monospace'; x.textBaseline = 'top';
   for (let t = t0; t <= t1 + minor; t += minor) {
     const px = Math.round(t * pps - sl) + .5; const major = Math.abs(t / step - Math.round(t / step)) < 1e-6;
@@ -1578,33 +1668,59 @@ function drawRuler() {
   if (phx >= -8 && phx <= w + 8) { x.fillStyle = '#FF6B1A'; x.beginPath(); x.moveTo(phx - 6, 0); x.lineTo(phx + 6, 0); x.lineTo(phx + 6, 8); x.lineTo(phx, 15); x.lineTo(phx - 6, 8); x.closePath(); x.fill(); }
 }
 function fmtRuler(t, step) { const m = Math.floor(t / 60), s = t - m * 60; return step < 1 ? `${m}:${s.toFixed(1).padStart(4, '0')}` : `${m}:${String(Math.round(s)).padStart(2, '0')}`; }
-function timeAtX(clientX) { return Math.max(0, (clientX - tlInner.getBoundingClientRect().left) / pps); }
+function timeAtX(clientX) { return Math.max(0, (clientX - tlInner.getBoundingClientRect().left - padX()) / pps); }
 const ZMIN = .25, ZMAX = 400;
 function setZoomFromSlider() { const v = +$('#zoom').value; pps = ZMIN * Math.pow(ZMAX / ZMIN, v / 100); renderTimeline(); }
 function setZoom(p, anchorT) {
   const old = pps; pps = clamp(p, ZMIN, ZMAX); $('#zoom').value = Math.round(Math.log(pps / ZMIN) / Math.log(ZMAX / ZMIN) * 100); fillRange($('#zoom'));
   const at = anchorT != null ? anchorT : cur; const vx = at * old - tlScroll.scrollLeft;
-  renderTimeline(); tlScroll.scrollLeft = Math.max(0, at * pps - vx); drawRuler();
+  renderTimeline(); if (isMob()) setScroll(cur * pps); else tlScroll.scrollLeft = Math.max(0, at * pps - vx); drawRuler();
 }
-function fitZoom() { const end = Math.max(30, projectEnd()); setZoom((tlScroll.clientWidth - 40) / end, 0); tlScroll.scrollLeft = 0; drawRuler(); }
+function fitZoom() { if (isMob()) { setZoom(tlScroll.clientWidth * .9 / Math.max(8, projectEnd())); return; } const end = Math.max(30, projectEnd()); setZoom((tlScroll.clientWidth - 40) / end, 0); tlScroll.scrollLeft = 0; drawRuler(); }
 
 function snapPoints(exceptId) { const pts = [0, cur]; for (const c of P.clips) if (c.id !== exceptId) pts.push(c.start, c.start + c.dur); if (BEATS.length < 4000) for (const b of BEATS) pts.push(b.t); return pts; }
 
 let snapHit = null;
 function snapTime(t, pts) { snapHit = null; if (!snapOn) return t; const th = 9 / pps; let best = t, bd = th; for (const p of pts) { const d = Math.abs(p - t); if (d < bd) { bd = d; best = p; snapHit = p; } } return best; }
-function showSnap(t) { const l = $('#snapLine'); if (t == null) { l.hidden = true; return; } l.hidden = false; l.style.left = (t * pps) + 'px'; }
+function showSnap(t) { const l = $('#snapLine'); if (t == null) { l.hidden = true; return; } l.hidden = false; l.style.left = (t * pps + padX()) + 'px'; }
 lanesEl.addEventListener('pointerdown', e => {
   if (exporting || e.button > 0) return;
   const jb = e.target.closest('.joinb');
   if (jb) { select(jb.dataset.id); openSec('Transiciones'); return; }
   const ce = e.target.closest('.clip');
+  if (e.pointerType === 'touch' && isMob()) {
+    const handle = ce && SEL === ce.dataset.id && (e.target.classList.contains('l') || e.target.classList.contains('r'));
+    if (!handle) { touchClip(e, ce); return; }
+  }
   if (!ce) { select(null); seek(timeAtX(e.clientX)); scrubLanes(e); return; }
   const c = byId(ce.dataset.id); if (!c) return;
   if (SEL !== c.id) select(c.id);
-  const mode = e.target.classList.contains('l') ? 'l' : e.target.classList.contains('r') ? 'r' : 'move';
+  dragClip(e, ce, c, e.target.classList.contains('l') ? 'l' : e.target.classList.contains('r') ? 'r' : 'move', false);
+});
+let TOUCH_DRAG = false;
+// While a lifted clip is being moved, the finger must not also scroll the timeline.
+document.addEventListener('touchmove', e => { if (TOUCH_DRAG) e.preventDefault(); }, { passive: false });
+function touchClip(e, ce) {
+  const sx = e.clientX, sy = e.clientY, id = e.pointerId; let done = false, last = e;
+  const c = ce && byId(ce.dataset.id);
+  const finish = () => { done = true; clearTimeout(timer); window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancel); };
+  const timer = c ? setTimeout(() => {
+    if (done) return; finish();
+    if (SEL !== c.id) select(c.id);
+    const el = lanesEl.querySelector(`.clip[data-id="${c.id}"]`) || ce;
+    TOUCH_DRAG = true; el.classList.add('lifted'); try { navigator.vibrate && navigator.vibrate(8); } catch (err) {}
+    dragClip(last, el, c, 'move', true);
+  }, 380) : 0;
+  const mv = ev => { if (ev.pointerId !== id) return; last = ev; if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) finish(); };
+  const up = ev => { if (ev.pointerId !== id || done) return; finish(); if (c) { select(c.id); } else select(null); };
+  const cancel = ev => { if (ev.pointerId === id) finish(); };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', cancel);
+}
+function dragClip(e, ce, c, mode, armed) {
   const sx = e.clientX, sy = e.clientY, sl0 = tlScroll.scrollLeft, o = { start: c.start, dur: c.dur, in: c.in, track: c.track }, pts = snapPoints(c.id);
   let moved = false, last = e, frameQ = false, auto = 0;
   try { ce.setPointerCapture(e.pointerId); } catch (err) {}
+  if (armed) { moved = true; ce.classList.add('dragging'); auto = requestAnimationFrame(edgeScrollRef); }
   const apply = () => {
     frameQ = false; const ev = last;
     const dt = (ev.clientX - sx + tlScroll.scrollLeft - sl0) / pps;
@@ -1628,6 +1744,7 @@ lanesEl.addEventListener('pointerdown', e => {
     posClip(ce, c); showSnap(snapAt); updateInspTimes();
     if (!playing) { syncMedia(cur, false); requestDraw(); }
   };
+  function edgeScrollRef() { edgeScroll(); }
   const edgeScroll = () => {
     const r = tlScroll.getBoundingClientRect(), x = last.clientX, edge = 48;
     const v = x < r.left + edge ? -(r.left + edge - x) : x > r.right - edge ? (x - (r.right - edge)) : 0;
@@ -1640,12 +1757,24 @@ lanesEl.addEventListener('pointerdown', e => {
     last = ev; if (!frameQ) { frameQ = true; requestAnimationFrame(apply); }
   };
   const up = () => {
+    TOUCH_DRAG = false; ce.classList.remove('lifted');
     cancelAnimationFrame(auto); ce.classList.remove('dragging'); showSnap(null);
     ce.removeEventListener('pointermove', mv); ce.removeEventListener('pointerup', up); ce.removeEventListener('pointercancel', up);
     if (moved) { if (frameQ) apply(); renderTimeline(); if (c.track !== o.track) renderInspector(); commit(); }
   };
   ce.addEventListener('pointermove', mv); ce.addEventListener('pointerup', up); ce.addEventListener('pointercancel', up);
-});
+}
+// two fingers on the timeline zoom in and out
+(() => {
+  let d0 = 0, p0 = 0, q = 0, want = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  tlScroll.addEventListener('touchstart', e => { if (e.touches.length === 2 && isMob()) { d0 = dist(e.touches); p0 = pps; } }, { passive: true });
+  tlScroll.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !d0) return; e.preventDefault();
+    want = p0 * dist(e.touches) / d0; if (!q) q = requestAnimationFrame(() => { q = 0; setZoom(want); });
+  }, { passive: false });
+  tlScroll.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+})();
 // click-and-drag on empty lane space scrubs the playhead
 function scrubLanes(e) {
   const mv = ev => seek(timeAtX(ev.clientX)), up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
@@ -1653,13 +1782,19 @@ function scrubLanes(e) {
 }
 // ruler scrubbing
 ruler.addEventListener('pointerdown', e => {
-  if (exporting) return;
+  if (exporting || isMob()) return;
   const r = ruler.getBoundingClientRect(); const at = ev => seek((ev.clientX - r.left + tlScroll.scrollLeft) / pps);
   at(e); try { ruler.setPointerCapture(e.pointerId); } catch (err) {}
   const mv = ev => at(ev), up = () => { ruler.removeEventListener('pointermove', mv); ruler.removeEventListener('pointerup', up); };
   ruler.addEventListener('pointermove', mv); ruler.addEventListener('pointerup', up);
 });
-tlScroll.addEventListener('scroll', () => { drawRuler(); drawOverview(); }, { passive: true });
+tlScroll.addEventListener('scroll', () => {
+  if (isMob()) {
+    if (progScroll >= 0 && Math.abs(tlScroll.scrollLeft - progScroll) < 2) progScroll = -1;
+    else if (!exporting) { if (playing) pause(); const t = tlScroll.scrollLeft / pps; if (Math.abs(t - cur) > 1e-4) seek(t); }
+  }
+  drawRuler(); drawOverview();
+}, { passive: true });
 /* overview bar: the whole project in miniature; the orange window is what the timeline shows */
 const ovw = $('#ovw'), ovwC = $('#ovwC'), ovwWin = $('#ovwWin');
 const ovwSpan = () => Math.max(10, projectEnd() * 1.04 + 2);
@@ -1672,7 +1807,7 @@ function drawOverview() {
   const span = ovwSpan(), rowH = (h - 6) / TRACKS.length;
   for (const c of P.clips) { const i = TRACKS.findIndex(t => t.id === c.track); if (i < 0) continue; x.fillStyle = KC[c.type]; x.fillRect(c.start / span * w, 3 + i * rowH, Math.max(1.5, c.dur / span * w), Math.max(1.5, rowH - 1)); }
   x.fillStyle = '#FF6B1A'; x.fillRect(cur / span * w - .75, 0, 1.5, h);
-  const vw = tlScroll.clientWidth / pps, l = tlScroll.scrollLeft / pps;
+  const vw = tlScroll.clientWidth / pps, l = (tlScroll.scrollLeft - padX()) / pps;
   ovwWin.style.left = (l / span * w) + 'px'; ovwWin.style.width = Math.min(w, vw / span * w) + 'px';
 }
 ovw.addEventListener('pointerdown', e => {
@@ -1899,7 +2034,30 @@ function select(id) {
   SEL = id; $$('.clip.sel', lanesEl).forEach(e => e.classList.remove('sel'));
   if (id) { const e = lanesEl.querySelector(`.clip[data-id="${id}"]`); if (e) e.classList.add('sel'); }
   renderInspector(); updateTools(); $('#stage').classList.toggle('grab', !!id);
+  $('#mbarMain').hidden = !!id; $('#mbarClip').hidden = !id;
 }
+/* phone sheets: the library or the clip settings slide up over the timeline, the preview stays in view */
+function openSheet(which) {
+  const app = $('#app'), tl = $('.tl').getBoundingClientRect();
+  app.style.setProperty('--sheet-top', Math.max(120, Math.round(tl.top)) + 'px');
+  app.dataset.sheet = which;
+}
+function closeSheet() { delete $('#app').dataset.sheet; }
+document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(); });
+$$('.mbar').forEach(bar => bar.addEventListener('click', e => {
+  const b = e.target.closest('[data-m]'); if (!b) return; const m = b.dataset.m;
+  if (['media', 'titles', 'fx', 'bgs'].includes(m) || (m === 'tr' && !SEL)) { showTab(m); openSheet('lib'); return; }
+  if (m === 'tr') { openSheet('insp'); openSec('Transiciones'); return; }
+  if (m === 'edit') { openSheet('insp'); return; }
+  if (m === 'project') { select(null); openSheet('insp'); return; }
+  if (m === 'split') { $('#tSplit').click(); return; }
+  if (m === 'dup') { $('#tDup').click(); return; }
+  if (m === 'del') { $('#tDel').click(); closeSheet(); return; }
+  if (m === 'done') { select(null); closeSheet(); }
+}));
+// After adding a file, a title or a background from the library, show the timeline again; effects keep the sheet open
+// so you can try several while watching the preview.
+$('.lib').addEventListener('click', e => { if (isMob() && e.target.closest('[data-add], .tcard, .bgcard')) setTimeout(closeSheet, 150); });
 function updateTools() { const has = !!SEL; $('#tDup').disabled = !has; $('#tDel').disabled = !has; }
 
 /* ---------------- library UI ---------------- */
@@ -2139,7 +2297,7 @@ function renderInspector() {
   if (!c) { box.innerHTML = projectPanel(); return; }
   if (isBound(c) && !c.au) c.au = JSON.parse(JSON.stringify(AU0));
   const kc = { video: 'var(--k-video)', audio: 'var(--k-audio)', image: 'var(--k-image)', color: 'var(--k-color)', text: 'var(--k-text)', fx: 'var(--k-fx)' }[c.type];
-  let h = `<div class="ih"><div class="kind"><i style="background:${kc}"></i>${KIND_NAME[c.type]} · pista ${trackOf(c.track).name}</div><h2>${esc(clipName(c))}</h2><div class="times" id="inspTimes"></div>
+  let h = `<div class="sheet-h"><b>Ajustes del clip</b><button data-close>Listo</button></div><div class="ih"><div class="kind"><i style="background:${kc}"></i>${KIND_NAME[c.type]} · pista ${trackOf(c.track).name}</div><h2>${esc(clipName(c))}</h2><div class="times" id="inspTimes"></div>
     <div class="acts"><button data-act="split">${svg('split')}Dividir</button><button data-act="dup">${svg('dup')}Duplicar</button>${c.type === 'video' ? `<button data-act="detach">${svg('unlink')}Separar audio</button>` : ''}<button class="danger" data-act="del">${svg('trash')}Eliminar</button></div></div>`;
   if (c.type === 'text') {
     const X = c.text;
@@ -2180,7 +2338,7 @@ function renderInspector() {
 }
 function updateInspTimes() { const c = cSel(), el = $('#inspTimes'); if (!c || !el) return; el.textContent = `Empieza ${fmtS(c.start)} · dura ${c.dur.toFixed(1)} s`; }
 function projectPanel() {
-  return `<div class="ih"><div class="kind">Proyecto</div><h2>${esc(P.name)}</h2><div class="times">Duración total ${fmtS(projectEnd())} · ${P.clips.length} ${P.clips.length === 1 ? 'clip' : 'clips'}</div></div>
+  return `<div class="sheet-h"><b>Proyecto</b><button data-close>Listo</button></div><div class="ih"><div class="kind">Proyecto</div><h2>${esc(P.name)}</h2><div class="times">Duración total ${fmtS(projectEnd())} · ${P.clips.length} ${P.clips.length === 1 ? 'clip' : 'clips'}</div></div>
     ${sec_('Formato', `<div class="fld"><span>Forma del video</span><div class="seg" role="group" aria-label="Forma del video">${[['16:9', '16:9 YouTube'], ['9:16', '9:16 Reels'], ['1:1', '1:1'], ['4:5', '4:5']].map(([v, n]) => `<button data-act="aspect:${v}" aria-pressed="${P.aspect === v}">${n}</button>`).join('')}</div></div>
       <div class="fld"><span>Calidad</span><div class="seg" role="group" aria-label="Calidad">${[[720, '720p'], [1080, '1080p']].map(([v, n]) => `<button data-act="q:${v}" aria-pressed="${P.q === v}">${n}</button>`).join('')}</div></div>
       <label class="colrow" for="f-pbg"><span>Color de fondo del proyecto</span><input type="color" id="f-pbg" data-pk="bg" value="${P.bg}"></label>`)}
