@@ -43,7 +43,7 @@
       {
         "provider": "github",
         "owner": "ricardiaz97-hub",
-        "repo": "Ricardo-Vega"
+        "repo": "Bezaleel"
       }
     ]
   },
@@ -52,6 +52,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ricardiaz97-hub/Ricardo-Vega.git"
+    "url": "https://github.com/ricardiaz97-hub/Bezaleel.git"
   }
 }

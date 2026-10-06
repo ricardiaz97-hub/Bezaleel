@@ -9,8 +9,8 @@ Reels first, ready for the occasional long-form shoot. No subscriptions, no wate
 
 ## Use it
 
-- **Web app (installable):** https://ricardiaz97-hub.github.io/Ricardo-Vega/. Open it in Chrome or Edge and choose **Instalar app**. It works offline and updates itself.
-- **Windows program:** download `Bezaleel-Setup-<version>.exe` from [Releases](https://github.com/ricardiaz97-hub/Ricardo-Vega/releases/latest). It updates itself. Windows shows "Windows protected your PC" because the installer isn't code-signed: choose **More info → Run anyway**.
+- **Web app (installable):** https://ricardiaz97-hub.github.io/Bezaleel/. Open it in Chrome or Edge and choose **Instalar app**. It works offline and updates itself.
+- **Windows program:** download `Bezaleel-Setup-<version>.exe` from [Releases](https://github.com/ricardiaz97-hub/Bezaleel/releases/latest). It updates itself. Windows shows "Windows protected your PC" because the installer isn't code-signed: choose **More info → Run anyway**.
 
 Your videos never leave your computer. Projects are stored locally on each machine.
 
@@ -25,6 +25,7 @@ Your videos never leave your computer. Projects are stored locally on each machi
 - Gradual zoom in and out on any clip
 - Rhythm: automatic beat detection for the song on the Música track (or tap the beat by hand), beat markers and snapping, effects that hit on every beat, 2 beats or bar, and **Cortar al ritmo** to cut a clip on the beat with transitions
 - Audio: 5-band equalizer with presets, background noise reduction (RNNoise), voice enhancement, lowering the music when someone speaks, and volume normalizing
+- Person detection without a green screen: titles behind the person, and the background blurred or replaced by a color or photo (MediaPipe, on your computer)
 - Color filters, audio fades and crossfades, detaching audio from video
 - 16:9, 9:16, 1:1 and 4:5 formats
 - Export to MP4
@@ -38,6 +39,8 @@ See [docs/STANDARDS.md](docs/STANDARDS.md) for the mission, the promises the pro
 | `app/index.html` | The editor |
 | `app/engine.js` | The effects engine: every effect, transition and built-in LUT, as WebGL 2 shaders |
 | `app/rhythm.js` | Beat detection and tap tempo |
+| `app/person.js` | Person detection for titles behind people and background replacement |
+| `app/vendor/mediapipe/` | Google's MediaPipe vision engine and selfie segmentation model (third-party, see NOTICE) |
 | `app/vendor/rnnoise/` | The noise reduction model and its worklet (third-party, see NOTICE) |
 | `app/` (other files) | Manifest, offline service worker, fonts and icons |
 | `electron/` | The Windows program, which wraps `app/` and handles automatic updates |
@@ -67,7 +70,7 @@ The bundled fonts are under the SIL Open Font License 1.1; see [NOTICE.md](NOTIC
 
 **Editor de video gratis y de código abierto para iglesias y equipos de alabanza.**
 
-- **App web instalable:** https://ricardiaz97-hub.github.io/Ricardo-Vega/. Ábrela en Chrome o Edge y toca **Instalar app**.
-- **Programa para Windows:** descarga el instalador en [Releases](https://github.com/ricardiaz97-hub/Ricardo-Vega/releases/latest). Se actualiza solo. Si Windows dice "Windows protegió su PC", toca **Más información → Ejecutar de todas formas**.
+- **App web instalable:** https://ricardiaz97-hub.github.io/Bezaleel/. Ábrela en Chrome o Edge y toca **Instalar app**.
+- **Programa para Windows:** descarga el instalador en [Releases](https://github.com/ricardiaz97-hub/Bezaleel/releases/latest). Se actualiza solo. Si Windows dice "Windows protegió su PC", toca **Más información → Ejecutar de todas formas**.
 
 Tus videos nunca salen de tu computadora. La misión, los estándares y el plan están en [docs/STANDARDS.md](docs/STANDARDS.md).

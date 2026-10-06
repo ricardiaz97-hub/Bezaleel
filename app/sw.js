@@ -1,7 +1,7 @@
 // Keeps Bezaleel working without internet. Bump VERSION when any app file changes.
-const VERSION = 'bezaleel-v3';
+const VERSION = 'bezaleel-v4';
 const SHELL = [
-  './', './index.html', './engine.js', './rhythm.js',
+  './', './index.html', './engine.js', './rhythm.js', './person.js',
   './vendor/rnnoise/workletProcessor.js', './vendor/rnnoise/rnnoise.wasm', './vendor/rnnoise/rnnoise_simd.wasm', './manifest.webmanifest', './fonts.css',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './fonts/Archivo-normal-400-900-latin-ext.woff2',
@@ -47,5 +47,9 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); return r; }).catch(() => caches.match('./index.html')));
     return;
   }
-  e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
+  // The person-detection engine (~12 MB) is cached the first time a project uses it, not at install.
+  e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
+    if (r.ok && new URL(req.url).pathname.includes('/vendor/mediapipe/')) { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+    return r;
+  })));
 });
