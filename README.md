@@ -19,7 +19,11 @@ Your videos never leave your computer. Projects are stored locally on each machi
 - Multitrack timeline: two video tracks, two text tracks, music and voice
 - Cuts, trims, speed from 0.25× to 4×, undo and redo
 - Title styles for worship: lyrics, scripture, lower thirds, credits
-- Transitions, color filters, audio fades, detaching audio from video
+- An **Efectos** menu with 16 shader effects (chromatic aberration, RGB shake, warp pulse, glitch, flicker, VHS, film grain, green screen and more), applied to one clip or, on the Efectos track, to everything below it
+- 17 transitions (zoom warp, RGB shake, glitch, light leak, film burn, whip and more) at the start or end of a clip, or at the joint between two clips
+- LUTs: 10 built-in looks plus `.cube` import
+- Gradual zoom in and out on any clip
+- Color filters, audio fades and crossfades, detaching audio from video
 - 16:9, 9:16, 1:1 and 4:5 formats
 - Export to MP4
 
@@ -29,7 +33,9 @@ See [docs/STANDARDS.md](docs/STANDARDS.md) for the mission, the promises the pro
 
 | Path | What it is |
 |---|---|
-| `app/` | The editor: one HTML page, plus its manifest, offline service worker, fonts and icons |
+| `app/index.html` | The editor |
+| `app/engine.js` | The effects engine: every effect, transition and built-in LUT, as WebGL 2 shaders |
+| `app/` (other files) | Manifest, offline service worker, fonts and icons |
 | `electron/` | The Windows program, which wraps `app/` and handles automatic updates |
 | `.github/workflows/pages.yml` | Publishes `app/` to GitHub Pages on every push to `main` |
 | `.github/workflows/desktop.yml` | Builds the Windows installer and publishes it to Releases on every push to `main` |

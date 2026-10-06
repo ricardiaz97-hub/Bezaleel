@@ -1,7 +1,7 @@
 // Keeps Bezaleel working without internet. Bump VERSION when any app file changes.
-const VERSION = 'bezaleel-v1';
+const VERSION = 'bezaleel-v2';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest', './fonts.css',
+  './', './index.html', './engine.js', './manifest.webmanifest', './fonts.css',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './fonts/Archivo-normal-400-900-latin-ext.woff2',
   './fonts/Archivo-normal-400-900-latin.woff2',
