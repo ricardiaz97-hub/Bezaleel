@@ -37,7 +37,7 @@ svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:
 svg.f{fill:currentColor;stroke:none}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
-.app{height:100%;display:grid;grid-template-columns:290px minmax(0,1fr) 310px;grid-template-rows:auto minmax(0,1fr) 330px;
+.app{height:100%;display:grid;grid-template-columns:290px minmax(0,1fr) 310px;grid-template-rows:auto minmax(0,1fr) var(--tlh,clamp(300px,44vh,440px));
   grid-template-areas:"top top top" "lib view insp" "tl tl tl"}
 
 /* top bar */
@@ -197,7 +197,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .clip.k-video canvas.wf{height:40%;opacity:.8}
 .clip .cl{position:relative;display:flex;align-items:center;gap:5px;padding:3px 7px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none}
 .clip .cl em{font-style:normal;font-weight:600;font-size:10px;padding:0 4px;border-radius:3px;background:rgba(0,0,0,.45)}
-.clip .h{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:2}
+.clip .h{position:absolute;top:0;bottom:0;width:12px;cursor:ew-resize;z-index:2}
 .clip .h.l{left:0}.clip .h.r{right:0}
 .clip .h::after{content:"";position:absolute;top:30%;bottom:30%;left:3px;width:3px;border-radius:2px;background:rgba(255,255,255,.55);opacity:0;transition:opacity 120ms}
 .clip:hover .h::after,.clip.sel .h::after{opacity:1}
@@ -206,6 +206,26 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .clip .tri.out{right:0;border-left:12px solid transparent}
 .clip.sel{box-shadow:inset 0 0 0 2px var(--accent),0 0 0 1px var(--accent)}
 .clip.missing{background:repeating-linear-gradient(45deg,#3a2a20 0 8px,#2a1e17 8px 16px)}
+.snapline{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed #F7C948;pointer-events:none;z-index:6}
+.dropghost{position:absolute;top:4px;bottom:4px;border-radius:5px;border:1.5px dashed var(--accent);background:rgba(232,93,4,.14);pointer-events:none;font-size:11px;font-weight:700;padding:3px 7px;white-space:nowrap;overflow:hidden;color:var(--fg)}
+.clip.dragging{opacity:.9;box-shadow:inset 0 0 0 2px var(--accent),0 8px 18px -6px #000;z-index:4}
+.tl-grip{height:7px;margin-top:-4px;cursor:row-resize;position:relative;z-index:3;touch-action:none}
+.tl-grip::after{content:"";position:absolute;left:50%;top:2px;width:44px;height:3px;margin-left:-22px;border-radius:2px;background:var(--line2)}
+.tl-grip:hover::after{background:var(--accent)}
+.ovw{position:relative;height:26px;margin:0 10px 8px 142px;border-radius:5px;background:var(--sunk);border:1px solid var(--line);touch-action:none;cursor:pointer}
+.ovw canvas{position:absolute;inset:0;width:100%;height:100%}
+.ovw-win{position:absolute;top:-1px;bottom:-1px;min-width:14px;border:1.5px solid var(--accent);background:rgba(232,93,4,.13);border-radius:5px;cursor:grab}
+.ovw-win:active{cursor:grabbing}
+.ovw-win i{position:absolute;top:0;bottom:0;width:10px;cursor:ew-resize}
+.ovw-win i.l{left:-5px}.ovw-win i.r{right:-5px}
+.ovw-win i::after{content:"";position:absolute;top:6px;bottom:6px;left:4px;width:2px;border-radius:1px;background:var(--accent)}
+@media (min-width:901px){
+  .app.portrait{grid-template-columns:290px minmax(0,1fr) var(--vw,420px);grid-template-areas:"top top top" "lib insp view" "tl tl tl"}
+  .app.portrait .insp{border-left:0;border-right:1px solid var(--line)}
+  .app.portrait .view{border-left:1px solid var(--line)}
+  .app.portrait .tc{min-width:0}
+}
+@media (min-width:901px) and (max-width:1100px){.app.portrait{grid-template-columns:250px minmax(0,1fr) var(--vw,420px)}}
 .ph{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--accent);pointer-events:none;z-index:5;box-shadow:0 0 8px rgba(232,93,4,.6)}
 .k-video{--kc:var(--k-video)}.k-image{--kc:var(--k-image)}.k-color{--kc:var(--k-color)}.k-text{--kc:var(--k-text)}.k-audio{--kc:var(--k-audio)}
 
@@ -302,6 +322,8 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
   .stagebox{padding:10px 0}
   .tl{height:auto}
   .tl-body{grid-template-columns:96px minmax(0,1fr)}
+  .ovw{margin-left:106px}
+  .tl-grip{display:none}
   .head b{font-size:11px}
   .lib,.insp{border:0;border-top:1px solid var(--line)}
   .lib .tabpane{max-height:none}
@@ -464,6 +486,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
   <aside class="insp" id="insp" aria-label="Propiedades"></aside>
 
   <section class="tl" aria-label="Línea de tiempo">
+    <div class="tl-grip" id="tlGrip" title="Arrastra para hacer la línea de tiempo más alta o más baja" role="separator" aria-orientation="horizontal"></div>
     <div class="tl-tools">
       <button class="tool" id="tSplit" title="Dividir en el cabezal (S)"><span data-ic="split"></span>Dividir</button>
       <button class="tool" id="tDup" title="Duplicar (Ctrl+D)"><span data-ic="dup"></span>Duplicar</button>
@@ -475,15 +498,16 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
         <button id="zOut" aria-label="Alejar">−</button>
         <input type="range" id="zoom" min="0" max="100" value="45" aria-label="Zoom de la línea de tiempo">
         <button id="zIn" aria-label="Acercar">+</button>
-        <button class="tool" id="zFit">Ajustar</button>
+        <button class="tool" id="zFit" title="Ver todo el proyecto (Mayús + Z)"><span data-ic="fit"></span>Ver todo</button>
       </div>
     </div>
     <div class="tl-body" id="tlBody">
       <div class="corner" id="corner">00:00</div>
       <canvas id="ruler" aria-label="Regla de tiempo"></canvas>
       <div class="heads" id="heads"></div>
-      <div class="tl-scroll" id="tlScroll"><div class="tl-inner" id="tlInner"><div id="lanes"></div><div class="ph" id="ph"></div></div></div>
+      <div class="tl-scroll" id="tlScroll"><div class="tl-inner" id="tlInner"><div id="lanes"></div><div class="ph" id="ph"></div><div class="snapline" id="snapLine" hidden></div></div></div>
     </div>
+    <div class="ovw" id="ovw" title="Vista de todo el proyecto: arrastra el recuadro para moverte, o sus bordes para acercar y alejar"><canvas id="ovwC"></canvas><div class="ovw-win" id="ovwWin"><i class="l"></i><i class="r"></i></div></div>
   </section>
 </div>
 
@@ -538,6 +562,7 @@ const IC = {
   wave: 'M2 12h3l2-6 3 12 3-9 2 6 2-3h5',
   speed: 'M12 14l4-4M3.5 18a9 9 0 1 1 17 0',
   film: 'M4 4h16v16H4zM8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4',
+  fit: 'M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4',
   music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
 };
 function svg(n) { const d = IC[n] || ''; const f = d.startsWith('f:'); return `<svg viewBox="0 0 24 24" class="${f ? 'f' : ''}" aria-hidden="true"><path d="${f ? d.slice(2) : d}"/></svg>`; }
@@ -828,8 +853,11 @@ function setCanvasSize() {
   fitStage(); requestDraw();
 }
 function fitStage() {
-  const box = $('#stagebox'); const st = $('#stage');
+  const box = $('#stagebox'); const st = $('#stage'), app = $('#app');
   const narrow = matchMedia('(max-width:900px)').matches;
+  const portrait = cv.height > cv.width && !narrow;
+  app.classList.toggle('portrait', portrait);
+  if (portrait) { const rh = box.clientHeight - 28; const want = clamp(Math.round(rh * cv.width / cv.height) + 28, 360, Math.round(window.innerWidth * .45)); if (parseInt(app.style.getPropertyValue('--vw'), 10) !== want) app.style.setProperty('--vw', want + 'px'); }
   const bw = box.clientWidth - (narrow ? 0 : 28), bh = narrow ? Math.min(window.innerHeight * .55, 560) : box.clientHeight - 28;
   const r = cv.width / cv.height; let w = bw, h = bw / r; if (h > bh) { h = bh; w = bh * r; }
   st.style.width = Math.max(40, Math.floor(w)) + 'px'; st.style.height = Math.max(40, Math.floor(h)) + 'px';
@@ -994,7 +1022,7 @@ function buildTracks() {
   lanesEl.innerHTML = TRACKS.map(tr => `<div class="lane${P.ts[tr.id] && P.ts[tr.id].hide ? ' hidden-track' : ''}" data-track="${tr.id}" data-kind="${tr.kind}" style="--h:${tr.h}px"></div>`).join('');
 }
 function laneEl(tid) { return lanesEl.querySelector(`.lane[data-track="${tid}"]`); }
-function gridStep() { const c = [.1, .2, .5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]; return c.find(s => s * pps >= 80) || 600; }
+function gridStep() { const c = [.1, .2, .5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]; return c.find(s => s * pps >= 80) || 3600; }
 function renderTimeline() {
   const vw = tlScroll.clientWidth || 800;
   tlInner.style.width = Math.max(vw, (projectEnd() + 20) * pps) + 'px';
@@ -1034,7 +1062,7 @@ function drawWave(cvs, c, m, wpx, hpx) {
   for (let i = 0; i < W; i++) { const ts = c.in + (i / W) * c.dur * c.speed; const v = p[Math.floor(ts * PEAK_RATE)] || 0; const h = Math.max(1, v * H * .92 * Math.min(1.6, c.vol)); x.fillRect(i, (H - h) / 2, 1, h); }
 }
 function refreshClip(c) { const old = lanesEl.querySelector(`.clip[data-id="${c.id}"]`); const n = clipEl(c); if (old && old.parentNode.dataset.track === c.track) old.replaceWith(n); else { if (old) old.remove(); const l = laneEl(c.track); if (l) l.appendChild(n); } }
-function placePlayhead() { $('#ph').style.left = (cur * pps) + 'px'; }
+function placePlayhead() { $('#ph').style.left = (cur * pps) + 'px'; drawOverview(); }
 function followPlayhead() { const x = cur * pps, sl = tlScroll.scrollLeft, w = tlScroll.clientWidth; if (x > sl + w - 40 || x < sl) tlScroll.scrollLeft = Math.max(0, x - 80); }
 function drawRuler() {
   const dpr = Math.min(2, window.devicePixelRatio || 1), w = ruler.clientWidth, h = 26;
@@ -1054,54 +1082,76 @@ function drawRuler() {
 }
 function fmtRuler(t, step) { const m = Math.floor(t / 60), s = t - m * 60; return step < 1 ? `${m}:${s.toFixed(1).padStart(4, '0')}` : `${m}:${String(Math.round(s)).padStart(2, '0')}`; }
 function timeAtX(clientX) { return Math.max(0, (clientX - tlInner.getBoundingClientRect().left) / pps); }
-function setZoomFromSlider() { const v = +$('#zoom').value; pps = 6 * Math.pow(400 / 6, v / 100); renderTimeline(); }
+const ZMIN = .25, ZMAX = 400;
+function setZoomFromSlider() { const v = +$('#zoom').value; pps = ZMIN * Math.pow(ZMAX / ZMIN, v / 100); renderTimeline(); }
 function setZoom(p, anchorT) {
-  const old = pps; pps = clamp(p, 6, 400); $('#zoom').value = Math.round(Math.log(pps / 6) / Math.log(400 / 6) * 100);
+  const old = pps; pps = clamp(p, ZMIN, ZMAX); $('#zoom').value = Math.round(Math.log(pps / ZMIN) / Math.log(ZMAX / ZMIN) * 100);
   const at = anchorT != null ? anchorT : cur; const vx = at * old - tlScroll.scrollLeft;
   renderTimeline(); tlScroll.scrollLeft = Math.max(0, at * pps - vx); drawRuler();
 }
-function fitZoom() { const end = Math.max(5, projectEnd()); setZoom((tlScroll.clientWidth - 40) / end, 0); tlScroll.scrollLeft = 0; drawRuler(); }
+function fitZoom() { const end = Math.max(30, projectEnd()); setZoom((tlScroll.clientWidth - 40) / end, 0); tlScroll.scrollLeft = 0; drawRuler(); }
 
 function snapPoints(exceptId) { const pts = [0, cur]; for (const c of P.clips) if (c.id !== exceptId) pts.push(c.start, c.start + c.dur); return pts; }
-function snapTime(t, pts) { if (!snapOn) return t; const th = 9 / pps; let best = t, bd = th; for (const p of pts) { const d = Math.abs(p - t); if (d < bd) { bd = d; best = p; } } return best; }
 
+let snapHit = null;
+function snapTime(t, pts) { snapHit = null; if (!snapOn) return t; const th = 9 / pps; let best = t, bd = th; for (const p of pts) { const d = Math.abs(p - t); if (d < bd) { bd = d; best = p; snapHit = p; } } return best; }
+function showSnap(t) { const l = $('#snapLine'); if (t == null) { l.hidden = true; return; } l.hidden = false; l.style.left = (t * pps) + 'px'; }
 lanesEl.addEventListener('pointerdown', e => {
   if (exporting || e.button > 0) return;
   const ce = e.target.closest('.clip');
-  if (!ce) { select(null); seek(timeAtX(e.clientX)); return; }
+  if (!ce) { select(null); seek(timeAtX(e.clientX)); scrubLanes(e); return; }
   const c = byId(ce.dataset.id); if (!c) return;
   if (SEL !== c.id) select(c.id);
   const mode = e.target.classList.contains('l') ? 'l' : e.target.classList.contains('r') ? 'r' : 'move';
-  const sx = e.clientX, sy = e.clientY, o = { start: c.start, dur: c.dur, in: c.in, track: c.track }, pts = snapPoints(c.id);
-  let moved = false;
+  const sx = e.clientX, sy = e.clientY, sl0 = tlScroll.scrollLeft, o = { start: c.start, dur: c.dur, in: c.in, track: c.track }, pts = snapPoints(c.id);
+  let moved = false, last = e, frameQ = false, auto = 0;
   try { ce.setPointerCapture(e.pointerId); } catch (err) {}
-  const mv = ev => {
-    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
-    moved = true;
-    const dt = (ev.clientX - sx) / pps;
+  const apply = () => {
+    frameQ = false; const ev = last;
+    const dt = (ev.clientX - sx + tlScroll.scrollLeft - sl0) / pps;
+    let snapAt = null;
     if (mode === 'move') {
       let ns = Math.max(0, o.start + dt);
-      const a = snapTime(ns, pts), b = snapTime(ns + o.dur, pts) - o.dur;
-      ns = Math.abs(a - ns) <= Math.abs(b - ns) ? a : b; c.start = Math.max(0, ns);
+      const a = snapTime(ns, pts), ha = snapHit, b = snapTime(ns + o.dur, pts) - o.dur, hb = snapHit;
+      if (ha != null && (hb == null || Math.abs(a - ns) <= Math.abs(b - ns))) { ns = a; snapAt = ha; } else if (hb != null) { ns = b; snapAt = hb; }
+      c.start = Math.max(0, ns);
       const hit = document.elementFromPoint(ev.clientX, ev.clientY); const l = hit && hit.closest && hit.closest('.lane');
-      if (l && compatible(c.type, l.dataset.track)) c.track = l.dataset.track;
+      if (l && compatible(c.type, l.dataset.track) && l.dataset.track !== c.track) { c.track = l.dataset.track; l.appendChild(ce); }
     } else if (mode === 'r') {
-      let end = snapTime(o.start + Math.max(MIN, o.dur + dt), pts);
+      const end = snapTime(o.start + Math.max(MIN, o.dur + dt), pts); snapAt = snapHit;
       c.dur = clamp(end - o.start, MIN, maxDurFor(c, o.in));
     } else {
-      let ns = snapTime(o.start + dt, pts);
+      let ns = snapTime(o.start + dt, pts); snapAt = snapHit;
       const minStart = isBound(c) ? o.start - o.in / c.speed : -Infinity;
       ns = clamp(ns, Math.max(0, minStart), o.start + o.dur - MIN);
       const d = ns - o.start; c.start = ns; c.dur = o.dur - d; if (isBound(c)) c.in = Math.max(0, o.in + d * c.speed);
     }
-    refreshClip(c); updateInspTimes(); if (!playing) { syncMedia(cur, false); requestDraw(); }
+    posClip(ce, c); showSnap(snapAt); updateInspTimes();
+    if (!playing) { syncMedia(cur, false); requestDraw(); }
+  };
+  const edgeScroll = () => {
+    const r = tlScroll.getBoundingClientRect(), x = last.clientX, edge = 48;
+    const v = x < r.left + edge ? -(r.left + edge - x) : x > r.right - edge ? (x - (r.right - edge)) : 0;
+    if (v) { tlScroll.scrollLeft = Math.max(0, tlScroll.scrollLeft + v * .5); if (!frameQ) { frameQ = true; requestAnimationFrame(apply); } }
+    auto = requestAnimationFrame(edgeScroll);
+  };
+  const mv = ev => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+    if (!moved) { moved = true; ce.classList.add('dragging'); auto = requestAnimationFrame(edgeScroll); }
+    last = ev; if (!frameQ) { frameQ = true; requestAnimationFrame(apply); }
   };
   const up = () => {
+    cancelAnimationFrame(auto); ce.classList.remove('dragging'); showSnap(null);
     ce.removeEventListener('pointermove', mv); ce.removeEventListener('pointerup', up); ce.removeEventListener('pointercancel', up);
-    if (moved) { renderTimeline(); commit(); } else if (mode === 'move') { /* simple click: keep selection */ }
+    if (moved) { if (frameQ) apply(); renderTimeline(); if (c.track !== o.track) renderInspector(); commit(); }
   };
   ce.addEventListener('pointermove', mv); ce.addEventListener('pointerup', up); ce.addEventListener('pointercancel', up);
 });
+// click-and-drag on empty lane space scrubs the playhead
+function scrubLanes(e) {
+  const mv = ev => seek(timeAtX(ev.clientX)), up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+}
 // ruler scrubbing
 ruler.addEventListener('pointerdown', e => {
   if (exporting) return;
@@ -1110,10 +1160,57 @@ ruler.addEventListener('pointerdown', e => {
   const mv = ev => at(ev), up = () => { ruler.removeEventListener('pointermove', mv); ruler.removeEventListener('pointerup', up); };
   ruler.addEventListener('pointermove', mv); ruler.addEventListener('pointerup', up);
 });
-tlScroll.addEventListener('scroll', drawRuler, { passive: true });
+tlScroll.addEventListener('scroll', () => { drawRuler(); drawOverview(); }, { passive: true });
+/* overview bar: the whole project in miniature; the orange window is what the timeline shows */
+const ovw = $('#ovw'), ovwC = $('#ovwC'), ovwWin = $('#ovwWin');
+const ovwSpan = () => Math.max(10, projectEnd() * 1.04 + 2);
+const KC = { video: '#2F5E8C', audio: '#4E7A2E', image: '#2D6A5C', color: '#8A4A1A', text: '#71427A' };
+function drawOverview() {
+  const w = ovw.clientWidth, h = ovw.clientHeight; if (!w) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (ovwC.width !== Math.round(w * dpr)) { ovwC.width = Math.round(w * dpr); ovwC.height = Math.round(h * dpr); }
+  const x = ovwC.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+  const span = ovwSpan(), rowH = (h - 6) / TRACKS.length;
+  for (const c of P.clips) { const i = TRACKS.findIndex(t => t.id === c.track); if (i < 0) continue; x.fillStyle = KC[c.type]; x.fillRect(c.start / span * w, 3 + i * rowH, Math.max(1.5, c.dur / span * w), Math.max(1.5, rowH - 1)); }
+  x.fillStyle = '#E85D04'; x.fillRect(cur / span * w - .75, 0, 1.5, h);
+  const vw = tlScroll.clientWidth / pps, l = tlScroll.scrollLeft / pps;
+  ovwWin.style.left = (l / span * w) + 'px'; ovwWin.style.width = Math.min(w, vw / span * w) + 'px';
+}
+ovw.addEventListener('pointerdown', e => {
+  if (exporting) return; e.preventDefault();
+  const r = ovw.getBoundingClientRect(), span = ovwSpan(), toT = cx => (cx - r.left) / r.width * span;
+  const edge = e.target.classList.contains('l') ? 'l' : e.target.classList.contains('r') ? 'r' : e.target.closest('.ovw-win') ? 'move' : 'jump';
+  const l0 = tlScroll.scrollLeft / pps, v0 = tlScroll.clientWidth / pps, t0 = toT(e.clientX);
+  if (edge === 'jump') { tlScroll.scrollLeft = Math.max(0, (t0 - v0 / 2) * pps); drawRuler(); drawOverview(); }
+  try { ovw.setPointerCapture(e.pointerId); } catch (err) {}
+  const mv = ev => {
+    const t = toT(ev.clientX), d = t - t0;
+    if (edge === 'move' || edge === 'jump') { tlScroll.scrollLeft = Math.max(0, ((edge === 'jump' ? t - v0 / 2 : l0 + d)) * pps); }
+    else {
+      let a = l0, b = l0 + v0; if (edge === 'l') a = Math.min(b - .5, Math.max(0, l0 + d)); else b = Math.max(a + .5, l0 + v0 + d);
+      setZoom(tlScroll.clientWidth / (b - a), a); tlScroll.scrollLeft = a * pps;
+    }
+    drawRuler(); drawOverview();
+  };
+  const up = () => { ovw.removeEventListener('pointermove', mv); ovw.removeEventListener('pointerup', up); ovw.removeEventListener('pointercancel', up); };
+  ovw.addEventListener('pointermove', mv); ovw.addEventListener('pointerup', up); ovw.addEventListener('pointercancel', up);
+});
+/* drag the top edge of the timeline to make it taller or shorter */
+(() => {
+  const grip = $('#tlGrip'), app = $('#app');
+  try { const v = +localStorage.getItem('bezaleel.tlh'); if (v) app.style.setProperty('--tlh', v + 'px'); } catch (e) {}
+  grip.addEventListener('pointerdown', e => {
+    e.preventDefault(); const y0 = e.clientY, h0 = $('.tl').getBoundingClientRect().height;
+    try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+    const mv = ev => { const h = clamp(h0 - (ev.clientY - y0), 200, window.innerHeight - 260); app.style.setProperty('--tlh', Math.round(h) + 'px'); };
+    const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); try { localStorage.setItem('bezaleel.tlh', parseInt(app.style.getPropertyValue('--tlh'), 10)); } catch (err) {} };
+    grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up);
+  });
+})();
 $('#tlBody').addEventListener('wheel', e => {
-  if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault();
-  setZoom(pps * (e.deltaY < 0 ? 1.15 : 1 / 1.15), timeAtX(e.clientX));
+  const body = $('#tlBody');
+  if (e.ctrlKey || e.metaKey || e.altKey) { e.preventDefault(); setZoom(pps * Math.pow(1.0018, -e.deltaY * (e.deltaMode === 1 ? 30 : 1)), timeAtX(e.clientX)); return; }
+  if (!e.shiftKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && body.scrollHeight <= body.clientHeight + 1) { e.preventDefault(); tlScroll.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 30 : 1); }
 }, { passive: false });
 $('#heads').addEventListener('click', e => {
   const h = e.target.closest('[data-hide]'), m = e.target.closest('[data-mute]');
@@ -1123,14 +1220,21 @@ $('#heads').addEventListener('click', e => {
   buildTracks(); renderTimeline(); syncMedia(cur, playing); requestDraw(); commit();
 });
 // drag from library to lanes
+function dragDur(d) { if (d.type === 'text') return 4; if (d.type === 'color') return 5; const m = M.get(d.id); return m ? (m.kind === 'image' ? 5 : Math.max(MIN, m.duration || 5)) : 5; }
+function dragLabel(d) { if (d.type === 'text') return TITLES[d.i].n; if (d.type === 'color') return BGS[d.i].n; const m = M.get(d.id); return m ? m.name : ''; }
+function clearGhost() { $$('.dropghost', lanesEl).forEach(g2 => g2.remove()); showSnap(null); }
 lanesEl.addEventListener('dragover', e => {
   const l = e.target.closest('.lane'); if (!l || !DRAG) return;
   if (!compatible(DRAG.type, l.dataset.track)) return;
   e.preventDefault(); $$('.lane.over').forEach(x => x !== l && x.classList.remove('over')); l.classList.add('over');
+  const t = snapTime(timeAtX(e.clientX), snapPoints(null)); showSnap(snapHit);
+  let gh = $('.dropghost', lanesEl); if (!gh) { gh = document.createElement('div'); gh.className = 'dropghost'; gh.textContent = dragLabel(DRAG); }
+  if (gh.parentNode !== l) l.appendChild(gh);
+  gh.style.left = (t * pps) + 'px'; gh.style.width = Math.max(6, dragDur(DRAG) * pps) + 'px';
 });
-lanesEl.addEventListener('dragleave', e => { const l = e.target.closest('.lane'); if (l && !l.contains(e.relatedTarget)) l.classList.remove('over'); });
+lanesEl.addEventListener('dragleave', e => { const l = e.target.closest('.lane'); if (l && !l.contains(e.relatedTarget)) { l.classList.remove('over'); if (!lanesEl.contains(e.relatedTarget)) clearGhost(); } });
 lanesEl.addEventListener('drop', e => {
-  const l = e.target.closest('.lane'); $$('.lane.over').forEach(x => x.classList.remove('over'));
+  const l = e.target.closest('.lane'); $$('.lane.over').forEach(x => x.classList.remove('over')); clearGhost();
   if (!l || !DRAG || !compatible(DRAG.type, l.dataset.track)) return;
   e.preventDefault(); e.stopPropagation();
   const t = snapTime(timeAtX(e.clientX), snapPoints(null));
@@ -1146,7 +1250,7 @@ function clipFromMedia(m, track, start) {
   const tid = track || (type === 'audio' ? 'a1' : 'v1');
   return newClip(type, tid, start != null ? start : trackEnd(tid), dur, { mediaId: m.id });
 }
-function addMedia(id) { const m = M.get(id); if (!m || m.loading) return; addClip(clipFromMedia(m)); toast(`"${m.name}" se agregó al final de la pista ${trackOf(m.kind === 'audio' ? 'a1' : 'v1').name}.`); }
+function addMedia(id) { const m = M.get(id); if (!m || m.loading) return; addClip(clipFromMedia(m)); if (projectEnd() * pps > tlScroll.clientWidth - 40) fitZoom(); toast(`"${m.name}" se agregó al final de la pista ${trackOf(m.kind === 'audio' ? 'a1' : 'v1').name}.`); }
 function textFromPreset(i, start) {
   const p = TITLES[i]; const c = newText(p.s, p.t, { start: start != null ? start : cur, dur: 4, x: p.x != null ? p.x : .5, y: p.y != null ? p.y : .5 });
   c.tin = { t: p.tin || 'fade', d: p.tin === 'type' ? 1.6 : .6 }; c.tout = { t: 'fade', d: .5 };
@@ -1213,7 +1317,7 @@ $('#mgrid').addEventListener('click', e => {
 });
 $('#mgrid').addEventListener('dblclick', e => { const c = e.target.closest('.mcard'); if (c) addMedia(c.dataset.mid); });
 $('#mgrid').addEventListener('dragstart', e => { const c = e.target.closest('.mcard'); if (!c) return; const m = M.get(c.dataset.mid); if (!m || m.loading) { e.preventDefault(); return; } DRAG = { type: m.kind, id: m.id }; e.dataTransfer.setData('text/plain', m.name); e.dataTransfer.effectAllowed = 'copy'; });
-document.addEventListener('dragend', () => { DRAG = null; $$('.lane.over').forEach(x => x.classList.remove('over')); });
+document.addEventListener('dragend', () => { DRAG = null; $$('.lane.over').forEach(x => x.classList.remove('over')); clearGhost(); });
 function renderTitles() {
   $('#tgrid').innerHTML = TITLES.map((p, i) => `<li><button class="tcard" draggable="true" data-title="${i}"><span class="tprev" style="font-family:'${p.t.font}',Archivo;font-weight:${p.t.w};${p.t.italic ? 'font-style:italic;' : ''}${p.t.up ? 'text-transform:uppercase;' : ''}color:${p.t.box ? p.t.boxColor : (p.t.color || '#F2E8D2')}">${esc(p.s.split('\n')[0])}</span><small>${p.n}</small></button></li>`).join('');
   $('#bgrid').innerHTML = BGS.map((b, i) => `<li><button class="bgcard" draggable="true" data-bg="${i}"><i style="background:${b.bg.t === 'solid' ? b.bg.c1 : b.bg.t === 'linear' ? `linear-gradient(135deg,${b.bg.c1},${b.bg.c2})` : `radial-gradient(circle,${b.bg.c1},${b.bg.c2})`}"></i><span>${b.n}</span></button></li>`).join('');
@@ -1307,7 +1411,7 @@ function projectPanel() {
       <div class="fld"><span>Calidad</span><div class="seg" role="group" aria-label="Calidad">${[[720, '720p'], [1080, '1080p']].map(([v, n]) => `<button data-act="q:${v}" aria-pressed="${P.q === v}">${n}</button>`).join('')}</div></div>
       <label class="colrow" for="f-pbg"><span>Color de fondo del proyecto</span><input type="color" id="f-pbg" data-pk="bg" value="${P.bg}"></label>`)}
     ${sec_('Cómo se usa', `<p class="note">1. Importa tus archivos en <b>Medios</b>. 2. Arrástralos a la línea de tiempo o toca <b>Agregar</b>. 3. Toca un clip para editarlo aquí. 4. Cuando esté listo, toca <b>Exportar video</b>.</p>`)}
-    ${sec_('Atajos de teclado', `<div class="keys"><kbd>Espacio</kbd><span>Reproducir o pausar</span><kbd>S</kbd><span>Dividir en el cabezal</span><kbd>Supr</kbd><span>Eliminar el clip</span><kbd>Ctrl + D</kbd><span>Duplicar</span><kbd>Ctrl + Z</kbd><span>Deshacer</span><kbd>Ctrl + Y</kbd><span>Rehacer</span><kbd>← →</kbd><span>Un fotograma (con Mayús: 1 segundo)</span><kbd>Ctrl + rueda</kbd><span>Zoom de la línea de tiempo</span></div>`, false)}`;
+    ${sec_('Atajos de teclado', `<div class="keys"><kbd>Espacio</kbd><span>Reproducir o pausar</span><kbd>S</kbd><span>Dividir en el cabezal</span><kbd>Supr</kbd><span>Eliminar el clip</span><kbd>Ctrl + D</kbd><span>Duplicar</span><kbd>Ctrl + Z</kbd><span>Deshacer</span><kbd>Ctrl + Y</kbd><span>Rehacer</span><kbd>← →</kbd><span>Un fotograma (con Mayús: 1 segundo)</span><kbd>Ctrl + rueda</kbd><span>Acercar o alejar la línea de tiempo (también pellizcando el touchpad)</span><kbd>+  −</kbd><span>Acercar o alejar</span><kbd>Mayús + Z</kbd><span>Ver todo el proyecto</span></div>`, false)}`;
 }
 const insp = $('#insp');
 let textCommitT = 0;
@@ -1503,6 +1607,9 @@ document.addEventListener('keydown', e => {
   else if (k === 'home') { e.preventDefault(); seek(0); }
   else if (k === 'end') { e.preventDefault(); seek(projectEnd()); }
   else if (k === 'escape') select(null);
+  else if (e.shiftKey && k === 'z' && !mod) { e.preventDefault(); fitZoom(); }
+  else if (!mod && (k === '+' || k === '=')) { e.preventDefault(); setZoom(pps * 1.4); }
+  else if (!mod && (k === '-' || k === '_')) { e.preventDefault(); setZoom(pps / 1.4); }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && playing && !exporting) pause(); });
 new ResizeObserver(() => { fitStage(); drawRuler(); }).observe($('#stagebox'));
