@@ -244,7 +244,9 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .ovw-win i.l{left:-5px}.ovw-win i.r{right:-5px}
 .ovw-win i::after{content:"";position:absolute;top:6px;bottom:6px;left:4px;width:2px;border-radius:1px;background:var(--accent)}
 @media (min-width:901px){
-  .app.portrait{grid-template-columns:318px minmax(0,1fr) var(--vw,420px);grid-template-areas:"top top top" "lib insp view" "tl tl tl"}
+  /* vertical video: the preview takes the whole right column, next to the timeline too */
+  .app.portrait{grid-template-columns:318px minmax(0,1fr) var(--vw,420px);grid-template-areas:"top top top" "lib insp view" "tl tl view"}
+  .app.portrait .tl{border-right:1px solid var(--line)}
   .app.portrait .insp{border-left:0;border-right:1px solid var(--line)}
   .app.portrait .view{border-left:1px solid var(--line)}
   .app.portrait .tc{min-width:0}
@@ -369,7 +371,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <div class="brand"><b>Bezaleel</b></div>
       <nav aria-label="Secciones"><a href="#formatos">Formatos</a><a href="#funciones">Funciones</a><a href="#como">Cómo funciona</a></nav>
       <button class="btn" id="lpInstall" hidden>Instalar app</button>
-      <a class="btn ghost" id="lpWin" hidden href="https://github.com/ricardiaz97-hub/Ricardo-Vega/releases/latest" target="_blank" rel="noopener">Descargar para Windows</a>
+      <a class="btn ghost" id="lpWin" hidden href="https://github.com/ricardiaz97-hub/Bezaleel/releases/latest" target="_blank" rel="noopener">Descargar para Windows</a>
       <button class="btn" data-lp="open">Abrir el editor</button>
     </header>
 
@@ -442,7 +444,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <button class="btn lg" data-lp="new" data-aspect="16:9">Empezar un video nuevo</button>
     </section>
 
-    <footer class="lp-foot"><span>Bezaleel · software libre para iglesias y equipos de alabanza</span><span><a href="https://github.com/ricardiaz97-hub/Ricardo-Vega" target="_blank" rel="noopener">Código fuente</a> · Licencia GPL-3.0</span></footer>
+    <footer class="lp-foot"><span>Bezaleel · software libre para iglesias y equipos de alabanza</span><span><a href="https://github.com/ricardiaz97-hub/Bezaleel" target="_blank" rel="noopener">Código fuente</a> · Licencia GPL-3.0</span></footer>
   </div>
 </div>
 
@@ -495,6 +497,9 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <h3 class="lh">Al ritmo de la música</h3>
       <p class="hint">Golpean en cada tiempo de la canción que está en la pista <b>Música</b>. Ajusta cada cuántos golpes en el panel del clip.</p>
       <ul class="fxgrid" id="beatgrid"></ul>
+      <h3 class="lh">Persona (sin pantalla verde)</h3>
+      <p class="hint">Bezaleel encuentra a la persona en el video. Arrastra <b>Texto detrás</b> a un título, o un fondo a un video. La primera vez tarda unos segundos en prepararse.</p>
+      <ul class="fxgrid" id="persongrid"></ul>
       <h3 class="lh">Efectos</h3><ul class="fxgrid" id="fxgrid"></ul>
       <h3 class="lh">Movimiento</h3><ul class="fxgrid" id="mvgrid"></ul>
       <h3 class="lh">LUTs</h3>
@@ -561,6 +566,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 
 <script src="engine.js"></script>
 <script src="rhythm.js"></script>
+<script src="person.js"></script>
 <script>
 (() => {
 'use strict';
@@ -693,7 +699,7 @@ const byId = id => P.clips.find(c => c.id === id);
 const cSel = () => (SEL ? byId(SEL) : null);
 const projectEnd = () => P.clips.reduce((m, c) => Math.max(m, c.start + c.dur), 0);
 const trackOf = id => TRACKS.find(t => t.id === id);
-const compatible = (type, tid) => { const k = trackOf(tid).kind; if (type === 'lut' || type === 'motion' || type === 'tr') return false; return type === 'fx' ? k === 'fx' : type === 'text' ? k === 'text' : type === 'audio' ? k === 'audio' : k === 'video'; };
+const compatible = (type, tid) => { const k = trackOf(tid).kind; if (type === 'lut' || type === 'motion' || type === 'tr' || type === 'person') return false; return type === 'fx' ? k === 'fx' : type === 'text' ? k === 'text' : type === 'audio' ? k === 'audio' : k === 'video'; };
 const isBound = c => c.type === 'video' || c.type === 'audio';
 function maxDurFor(c, inPt) { if (!isBound(c)) return Infinity; const m = M.get(c.mediaId); if (!m || !m.duration) return Infinity; return Math.max(MIN, (m.duration - inPt) / c.speed); }
 function clipName(c) { if (c.type === 'fx') { const e = (c.efx || [])[0]; return e && BFX && BFX.FX[e.k] ? BFX.FX[e.k].n : 'Efecto'; } if (c.type === 'text') return (c.text.s || 'Texto').split('\n')[0]; if (c.type === 'color') return 'Fondo de color'; const m = M.get(c.mediaId); return m ? m.name : 'Archivo no encontrado'; }
@@ -1140,11 +1146,46 @@ function xWindow(c, t, opts) {
   if (!opts.noOut && isX(c.tout) && c.tout.d > 0 && R < c.tout.d) return { k: c.tout.t.slice(2), p: 1 - clamp(R / c.tout.d, 0, 1), dir: 'out' };
   return null;
 }
-function clipTex(c, t, opts, ctx2, layer) { sizeLayer(layer); drawInto(ctx2, c, t, opts); return runPasses(E.upload(layer), clipPasses(c), t - c.start, t); }
+/* ---- person: background without a green screen, and text behind people (see person.js) ---- */
+const PERSON = window.BezaleelPerson || null;
+const layerS = document.createElement('canvas'), layerP = document.createElement('canvas'), layerScene = document.createElement('canvas');
+const sctx = layerS.getContext('2d'), pctx = layerP.getContext('2d'), scnx = layerScene.getContext('2d');
+const segOn = c => !!(c.seg && c.seg.mode && c.seg.mode !== 'none' && c.type !== 'text' && c.type !== 'fx');
+const needsPerson = () => P.clips.some(c => segOn(c) || (c.type === 'text' && c.text && c.text.behind));
+let personAsked = false;
+function ensurePerson() {
+  if (!PERSON || PERSON.ready() || PERSON.failed()) return Promise.resolve(!!(PERSON && PERSON.ready()));
+  if (!personAsked) { personAsked = true; toast('Preparando la detección de personas. Solo la primera vez tarda unos segundos…', 4500); }
+  return PERSON.load().then(ok => { if (!ok) toast('No se pudo activar la detección de personas en esta computadora.', 5000); requestDraw(); return ok; });
+}
+// Cuts the person out of a clip's layer and puts them over a blurred, colored or image background.
+function segComposite(c, layer) {
+  const m = PERSON.mask(layer, playing); if (!m) return layer;
+  const W = cv.width, H = cv.height, k = Math.min(W, H) / 1080, s2 = c.seg;
+  for (const l of [layerS, layerP]) if (l.width !== W || l.height !== H) { l.width = W; l.height = H; }
+  pctx.save(); pctx.globalCompositeOperation = 'copy'; pctx.drawImage(layer, 0, 0);
+  pctx.globalCompositeOperation = 'destination-in'; pctx.drawImage(m, 0, 0, W, H); pctx.restore();
+  sctx.save(); sctx.globalCompositeOperation = 'copy';
+  if (s2.mode === 'blur') { if (hasFilter) sctx.filter = `blur(${Math.round((s2.blur || 20) * k)}px)`; sctx.drawImage(layer, 0, 0); sctx.filter = 'none'; }
+  else {
+    sctx.drawImage(layer, 0, 0); sctx.globalCompositeOperation = 'source-in';
+    const im = s2.mode === 'image' && M.get(s2.mediaId);
+    if (im && im.img && im.img.complete) { const r = Math.max(W / im.w, H / im.h); sctx.drawImage(im.img, (W - im.w * r) / 2, (H - im.h * r) / 2, im.w * r, im.h * r); }
+    else { sctx.fillStyle = s2.color || '#0B0907'; sctx.fillRect(0, 0, W, H); }
+  }
+  sctx.globalCompositeOperation = 'source-over'; sctx.drawImage(layerP, 0, 0); sctx.restore();
+  return layerS;
+}
+function clipSource(c, t, opts, ctx2, layer) { sizeLayer(layer); drawInto(ctx2, c, t, opts); return segOn(c) && PERSON && PERSON.ready() ? segComposite(c, layer) : layer; }
+function clipTex(c, t, opts, ctx2, layer) { return runPasses(E.upload(clipSource(c, t, opts, ctx2, layer)), clipPasses(c), t - c.start, t); }
 function blit(alpha) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha == null ? 1 : alpha; if (hasFilter) g.filter = 'none'; g.drawImage(E.canvas, 0, 0); g.restore(); }
 function renderClip(c, t, opts) {
   const xw = E.ok ? xWindow(c, t, opts) : null;
-  if (!E.ok || (!xw && !clipPasses(c).length)) { c.type === 'text' ? drawText(c, t, opts) : drawVisual(c, t, opts); return; }
+  const seg = segOn(c) && PERSON && PERSON.ready();
+  if (!E.ok || (!xw && !clipPasses(c).length)) {
+    if (seg) { const src = clipSource(c, t, opts, lctxA, layerA); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; if (hasFilter) g.filter = 'none'; g.drawImage(src, 0, 0); g.restore(); return; }
+    c.type === 'text' ? drawText(c, t, opts) : drawVisual(c, t, opts); return;
+  }
   let tex = clipTex(c, t, opts, lctxA, layerA);
   if (xw) tex = xw.dir === 'in' ? E.mix(null, tex, xw.k, xw.p) : E.mix(tex, null, xw.k, xw.p);
   E.present(tex); blit();
@@ -1166,8 +1207,20 @@ function renderFrame(t) {
   const W = cv.width, H = cv.height;
   g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; if (hasFilter) g.filter = 'none'; g.fillStyle = P.bg; g.fillRect(0, 0, W, H); g.restore();
   if (E.ok) E.begin(W, H);
+  if (PERSON && !PERSON.ready() && needsPerson()) ensurePerson();
+  let sceneMask;
   for (const tid of DRAW_ORDER) {
     if (P.ts[tid] && P.ts[tid].hide) continue;
+    // Before the first text track, keep a copy of the picture so far and find its people: a title marked
+    // "detrás de la persona" is drawn, then those people are drawn back on top of it.
+    if (sceneMask === undefined && trackOf(tid).kind === 'text') {
+      sceneMask = null;
+      if (PERSON && PERSON.ready() && P.clips.some(c => c.type === 'text' && c.text.behind && t >= c.start && t < c.start + c.dur && !(P.ts[c.track] || {}).hide)) {
+        if (layerScene.width !== W || layerScene.height !== H) { layerScene.width = W; layerScene.height = H; }
+        scnx.globalCompositeOperation = 'copy'; scnx.drawImage(cv, 0, 0); scnx.globalCompositeOperation = 'source-over';
+        sceneMask = PERSON.mask(layerScene, playing);
+      }
+    }
     if (tid === 'f1') { for (const c of activeAt(tid, t)) { try { applyAdjust(c, t); } catch (e) { g.restore(); console.warn(e); } } continue; }
     const done = new Set(), inJ = new Set(), outJ = new Set();
     for (const B of P.clips) {
@@ -1175,7 +1228,15 @@ function renderFrame(t) {
       inJ.add(B.id); outJ.add(j.A.id);
       if (t >= j.cut - j.d / 2 && t < j.cut + j.d / 2) { try { renderJoin(j, t); } catch (e) { g.restore(); console.warn(e); } done.add(j.A.id); done.add(B.id); }
     }
-    for (const c of activeAt(tid, t)) if (!done.has(c.id)) { try { renderClip(c, t, { noIn: inJ.has(c.id), noOut: outJ.has(c.id) }); } catch (e) { g.restore(); console.warn(e); } }
+    for (const c of activeAt(tid, t)) if (!done.has(c.id)) {
+      try { renderClip(c, t, { noIn: inJ.has(c.id), noOut: outJ.has(c.id) }); } catch (e) { g.restore(); console.warn(e); }
+      if (sceneMask && c.type === 'text' && c.text.behind) {
+        if (layerP.width !== W || layerP.height !== H) { layerP.width = W; layerP.height = H; }
+        pctx.save(); pctx.globalCompositeOperation = 'copy'; pctx.drawImage(layerScene, 0, 0);
+        pctx.globalCompositeOperation = 'destination-in'; pctx.drawImage(sceneMask, 0, 0, W, H); pctx.restore();
+        g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; if (hasFilter) g.filter = 'none'; g.drawImage(layerP, 0, 0); g.restore();
+      }
+    }
   }
 }
 
@@ -1288,6 +1349,8 @@ function clipEl(c) {
   if (c.type !== 'fx' && c.efx && c.efx.length) tags.push(c.efx.length === 1 && BFX && BFX.FX[c.efx[0].k] ? BFX.FX[c.efx[0].k].n : c.efx.length + ' efectos');
   if (c.lut && c.lut.id) tags.push('LUT');
   if (c.kbm) tags.push(c.kbm === 'in' ? 'zoom +' : 'zoom −');
+  if (segOn(c)) tags.push(c.seg.mode === 'blur' ? 'fondo borroso' : c.seg.mode === 'image' ? 'fondo imagen' : 'fondo color');
+  if (c.type === 'text' && c.text.behind) tags.push('detrás');
   if (c.au) { if (c.au.nr) tags.push('sin ruido'); if (c.au.voice) tags.push('voz'); if (c.au.duck) tags.push('baja con voz'); if (c.au.eq && c.au.eq.some(Boolean)) tags.push('EQ'); }
   inner += `<div class="cl">${esc(clipName(c))}${tags.map(t => `<em>${esc(t)}</em>`).join('')}</div>`;
   if (c.tin.t !== 'none') inner += '<i class="tri in"></i>';
@@ -1495,9 +1558,10 @@ $('#heads').addEventListener('click', e => {
 function dragDur(d) { if (d.type === 'fx') return 3; if (d.type === 'text') return 4; if (d.type === 'color') return 5; const m = M.get(d.id); return m ? (m.kind === 'image' ? 5 : Math.max(MIN, m.duration || 5)) : 5; }
 function dragLabel(d) { if (d.type === 'fx') return BFX.FX[d.k].n; if (d.type === 'text') return TITLES[d.i].n; if (d.type === 'color') return BGS[d.i].n; const m = M.get(d.id); return m ? m.name : ''; }
 function clearGhost() { $$('.dropghost', lanesEl).forEach(g2 => g2.remove()); showSnap(null); }
-const ON_CLIP = ['fx', 'lut', 'motion', 'tr'];
+const ON_CLIP = ['fx', 'lut', 'motion', 'tr', 'person'];
 function clipAccepts(c, d) {
   if (!c) return false;
+  if (d.type === 'person') return d.m === 'behind' ? c.type === 'text' : (c.type === 'video' || c.type === 'image');
   if (d.type === 'tr') return c.type !== 'fx';
   if (c.type === 'fx' || c.type === 'audio') return false;
   if (d.type === 'motion' || d.type === 'lut') return c.type !== 'text';
@@ -1583,6 +1647,11 @@ function applyToClip(c, d, tg) {
   else if (d.type === 'lut') { c.lut = { id: d.id, mix: 1 }; const l = getLut(d.id); msg = `LUT ${l ? l.n : ''} aplicado.`; }
   else if (d.type === 'motion') { c.kbm = d.m; c.kb = false; if (c.kba == null) c.kba = .2; msg = d.m === 'in' ? 'Zoom gradual: acercar.' : 'Zoom gradual: alejar.'; }
   else if (d.type === 'tr') { msg = setTransition(tg || trTarget(c, cur < c.start + c.dur / 2), d.k); }
+  else if (d.type === 'person') {
+    if (d.m === 'behind') { c.text.behind = true; msg = 'El título queda detrás de la persona.'; }
+    else { c.seg = Object.assign({ blur: 20, color: '#0B0907' }, c.seg, { mode: d.m }); msg = d.m === 'blur' ? 'Fondo desenfocado.' : 'Fondo cambiado por un color.'; }
+    ensurePerson();
+  }
   renderTimeline(); select(c.id); syncMedia(cur, playing); requestDraw(); commit();
   if (msg) toast(msg);
 }
@@ -1715,6 +1784,7 @@ function renderFxLib() {
   $('#mvgrid').innerHTML = [['in', 'Zoom gradual: acercar'], ['out', 'Zoom gradual: alejar']].map(([m, n]) => fxCard('data-mv', m, n, THUMBS['mv:' + m])).join('');
   $('#lutgrid').innerHTML = lutList().map(l => fxCard('data-lut', l.id, l.n, THUMBS['lut:' + l.id])).join('');
   $('#trgrid').innerHTML = Object.entries(BFX.TRX).map(([k, d]) => fxCard('data-tr', k, d.n, THUMBS['tr:' + k])).join('');
+  $('#persongrid').innerHTML = [['behind', 'Texto detrás de la persona'], ['blur', 'Desenfocar el fondo'], ['color', 'Fondo de color']].map(([m, n]) => fxCard('data-person', m, n, personThumb(m))).join('');
 }
 // Preview pictures for the library cards, rendered with the real effects on a small sample scene.
 function sampleScene(alt, green) {
@@ -1751,17 +1821,29 @@ function makeThumbs() {
   }
   renderFxLib();
 }
+// Illustrations for the Persona cards: drawn, since they need a real person to render live.
+const PTH = {};
+function personThumb(m) {
+  if (PTH[m]) return PTH[m];
+  const c = document.createElement('canvas'); c.width = 192; c.height = 108; const x = c.getContext('2d');
+  if (m === 'color') { x.fillStyle = '#7A4580'; x.fillRect(0, 0, 192, 108); }
+  else { x.drawImage(sampleScene(true), 0, 0); if (m === 'blur') { const t = document.createElement('canvas'); t.width = 192; t.height = 108; const tx = t.getContext('2d'); tx.filter = 'blur(5px)'; tx.drawImage(c, 0, 0); x.drawImage(t, 0, 0); } }
+  if (m === 'behind') { x.fillStyle = '#F7C948'; x.font = '900 46px "Bebas Neue", Archivo, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('AMÉN', 96, 58); }
+  x.fillStyle = '#2A1A10'; x.beginPath(); x.arc(96, 42, 14, 0, 7); x.fill(); x.beginPath(); x.moveTo(68, 108); x.quadraticCurveTo(70, 62, 96, 60); x.quadraticCurveTo(122, 62, 124, 108); x.fill();
+  return (PTH[m] = c.toDataURL('image/jpeg', .85));
+}
 function cardDrag(e) {
   const b = e.target.closest('.fxcard'); if (!b) return;
-  DRAG = b.dataset.fx ? { type: 'fx', k: b.dataset.fx, beat: b.dataset.beat ? +b.dataset.beat : 0 } : b.dataset.mv ? { type: 'motion', m: b.dataset.mv } : b.dataset.lut ? { type: 'lut', id: b.dataset.lut } : { type: 'tr', k: b.dataset.tr };
+  DRAG = b.dataset.person ? { type: 'person', m: b.dataset.person } : b.dataset.fx ? { type: 'fx', k: b.dataset.fx, beat: b.dataset.beat ? +b.dataset.beat : 0 } : b.dataset.mv ? { type: 'motion', m: b.dataset.mv } : b.dataset.lut ? { type: 'lut', id: b.dataset.lut } : { type: 'tr', k: b.dataset.tr };
   e.dataTransfer.setData('text/plain', 'efecto'); e.dataTransfer.effectAllowed = 'copy';
 }
 function cardClick(e) {
   const b = e.target.closest('.fxcard'); if (!b) return;
-  const d = b.dataset.fx ? { type: 'fx', k: b.dataset.fx, beat: b.dataset.beat ? +b.dataset.beat : 0 } : b.dataset.mv ? { type: 'motion', m: b.dataset.mv } : b.dataset.lut ? { type: 'lut', id: b.dataset.lut } : { type: 'tr', k: b.dataset.tr };
+  const d = b.dataset.person ? { type: 'person', m: b.dataset.person } : b.dataset.fx ? { type: 'fx', k: b.dataset.fx, beat: b.dataset.beat ? +b.dataset.beat : 0 } : b.dataset.mv ? { type: 'motion', m: b.dataset.mv } : b.dataset.lut ? { type: 'lut', id: b.dataset.lut } : { type: 'tr', k: b.dataset.tr };
   const c = cSel();
   if (c && clipAccepts(c, d)) { applyToClip(c, d); return; }
   if (d.type === 'fx' && d.k !== 'key') { addAdjust(d.k, cur, d.beat); toast(`${BFX.FX[d.k].n} en la pista Efectos: se aplica a todo lo que está debajo.`, 4500); return; }
+  if (d.type === 'person') { toast(d.m === 'behind' ? 'Selecciona primero un título, o arrastra la tarjeta encima de él.' : 'Selecciona primero el video donde está la persona.', 4500); return; }
   toast(d.type === 'tr' ? 'Arrastra la transición al inicio, al final o a la unión de dos clips.' : d.k === 'key' ? 'Selecciona primero el clip con fondo verde.' : 'Selecciona primero un clip de video o foto.', 4000);
 }
 $('#tab-fx').addEventListener('dragstart', cardDrag); $('#tab-tr').addEventListener('dragstart', cardDrag);
@@ -1832,6 +1914,14 @@ function lutFields(c) {
     ${v ? rng('Intensidad del LUT', 'lut.mix', 0, 1, .01, x100, c) : ''}
     <div><button class="btn sm" data-act="importlut">${svg('upload')}Importar LUT (.cube)</button></div>`;
 }
+function segFields(c) {
+  const mode = (c.seg && c.seg.mode) || 'none', imgs = order.map(id => M.get(id)).filter(m => m && m.kind === 'image');
+  let h = `<div class="fld"><span>Fondo detrás de la persona</span><div class="seg" role="group" aria-label="Fondo">${[['none', 'Original'], ['blur', 'Desenfocar'], ['color', 'Color'], ['image', 'Imagen']].map(([v, n]) => `<button data-act="seg:${v}" aria-pressed="${mode === v}">${n}</button>`).join('')}</div></div>`;
+  if (mode === 'blur') h += rng('Cuánto desenfoque', 'seg.blur', 4, 80, 1, px, c);
+  if (mode === 'color') h += col('Color del fondo', 'seg.color', c);
+  if (mode === 'image') h += imgs.length ? sel('Imagen de fondo', 'seg.mediaId', imgs.map(m => [m.id, m.name]), c) : '<p class="note">Importa una foto en <b>Medios</b> para usarla de fondo.</p>';
+  return h + '<p class="note">Bezaleel encuentra a la persona en cada cuadro, sin pantalla verde. Funciona mejor con una o dos personas bien visibles.</p>';
+}
 function motionFields(c) {
   const km = c.kbm || (c.kb ? 'in' : '');
   return `<div class="fld"><span>Zoom gradual</span><div class="seg" role="group" aria-label="Zoom gradual">${[['', 'No'], ['in', 'Acercar'], ['out', 'Alejar']].map(([v, n]) => `<button data-act="kbm:${v}" aria-pressed="${km === v}">${n}</button>`).join('')}</div></div>
@@ -1894,6 +1984,7 @@ function renderInspector() {
       ${col('Color del texto', 'text.color', c)}
       <div class="fld"><span>Alineación</span><div class="seg" role="group" aria-label="Alineación">${[['left', 'Izquierda'], ['center', 'Centro'], ['right', 'Derecha']].map(([v, n]) => `<button data-act="align:${v}" aria-pressed="${X.align === v}">${n}</button>`).join('')}</div></div>
       <div class="row2">${chk('MAYÚSCULAS', 'text.up', c)}${chk('Cursiva', 'text.italic', c)}</div>`);
+    h += sec_('Detrás de la persona', `${chk('Poner el título detrás de la persona', 'text.behind', c)}<p class="note">La persona del video de abajo queda delante del texto. Funciona mejor con una o dos personas bien visibles.${PERSON && PERSON.failed() ? ' <b>Esta computadora no pudo activar la detección de personas.</b>' : ''}</p>`, !!c.text.behind);
     h += sec_('Estilo', `${chk('Sombra', 'text.shadow', c)}${chk('Contorno', 'text.stroke', c)}${col('Color del contorno', 'text.strokeColor', c)}
       ${chk('Caja de fondo', 'text.box', c)}${col('Color de la caja', 'text.boxColor', c)}${rng('Opacidad de la caja', 'text.boxOp', 0, 1, .01, x100, c)}`);
     h += sec_('Posición', `<div class="chips">${[['top', 'Arriba'], ['mid', 'Centro'], ['low', 'Abajo'], ['lt', 'Tercio inferior']].map(([v, n]) => `<button class="chip" data-act="pos:${v}">${n}</button>`).join('')}</div>
@@ -1914,6 +2005,7 @@ function renderInspector() {
     if (c.type === 'video') h += sec_('Velocidad', rng('Velocidad', 'speed', .25, 4, .05, spd, c) + '<div class="chips">' + [.5, 1, 1.5, 2].map(v => `<button class="chip" data-act="speed:${v}" aria-pressed="${c.speed === v}">${v}×</button>`).join('') + '</div>');
     if (c.type !== 'color') h += sec_('Color y filtros', colorFields(c), false);
     if (c.type !== 'color') h += sec_('LUT', lutFields(c), !!(c.lut && c.lut.id));
+    if (c.type !== 'color') h += sec_('Fondo (sin pantalla verde)', segFields(c), segOn(c));
     h += sec_('Efectos', efxFields(c), !!(c.efx && c.efx.length));
     if (c.type === 'video') h += sec_('Audio', audioFields(c), false);
     h += sec_('Transiciones', transFields(c), c.type === 'color');
@@ -1948,6 +2040,7 @@ insp.addEventListener('input', e => {
   if (k === 'join.d') renderTimeline();
   if (/^efx\.\d+\.beat$/.test(k)) { const e2 = getP(c, k.replace(/\.beat$/, '')); if (+v > 0 && e2.decay == null) e2.decay = .25; renderInspector(); }
   if (k === 'au.nr' || k === 'au.voice' || k === 'au.duck') refreshClip(c);
+  if (k === 'text.behind') { refreshClip(c); if (v) ensurePerson(); }
   updateInspTimes(); syncMedia(cur, playing); requestDraw();
 });
 insp.addEventListener('change', e => {
@@ -1977,6 +2070,7 @@ insp.addEventListener('click', e => {
   if (act === 'eq') { c.au = c.au || JSON.parse(JSON.stringify(AU0)); c.au.eq = EQ_PRESETS[arg].g.slice(); }
   else
   if (act === 'fxdel') { (c.efx || []).splice(+arg, 1); if (c.type === 'fx' && !c.efx.length) { delSel(); return; } }
+  else if (act === 'seg') { c.seg = Object.assign({ blur: 20, color: '#0B0907' }, c.seg, { mode: arg }); if (arg === 'image' && !c.seg.mediaId) { const im = order.map(id => M.get(id)).find(m => m && m.kind === 'image'); if (im) c.seg.mediaId = im.id; } if (arg !== 'none') ensurePerson(); }
   else if (act === 'kbm') { c.kbm = arg; c.kb = false; if (arg && c.kba == null) c.kba = .15; }
   else if (act === 'fit') c.fit = arg;
   else if (act === 'preset') c.preset = arg;
@@ -2055,6 +2149,7 @@ async function startExport() {
   exMime = pickMime(); if (!exMime || !cv.captureStream) { exShow('setup'); return; }
   const listen = $('#exListen') ? $('#exListen').checked : true;
   pause(); ensureAudio(); if (AC && AC.state === 'suspended') await AC.resume();
+  if (needsPerson()) await ensurePerson();
   exCancel = false; chunks = []; exporting = true;
   try {
     vStream = cv.captureStream(P.fps);
