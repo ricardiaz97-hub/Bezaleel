@@ -699,7 +699,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
         <div><button class="btn sm" id="bClearDemo">Empezar proyecto nuevo</button></div>
       </div>
       <label class="import" for="fileIn"><span data-ic="upload"></span><b>Importar archivos</b><small>Videos, música y fotos. También puedes arrastrarlos a la ventana.</small></label>
-      <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*" hidden>
+      <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*,.cube,.zip" hidden>
       <ul class="mgrid" id="mgrid"></ul>
     </div>
     <div class="tabpane" id="tab-titles" hidden>
@@ -722,8 +722,8 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
       <h3 class="lh">Efectos</h3><ul class="fxgrid" id="fxgrid"></ul>
       <h3 class="lh">Movimiento</h3><ul class="fxgrid" id="mvgrid"></ul>
       <h3 class="lh">LUTs</h3>
-      <label class="import slim" for="lutIn"><span data-ic="upload"></span><b>Importar LUT (.cube)</b><small>Los LUT de tu cámara o los que descargues.</small></label>
-      <input type="file" id="lutIn" accept=".cube,.CUBE" multiple hidden>
+      <label class="import slim" for="lutIn"><span data-ic="upload"></span><b>Importar LUT (.cube o .zip)</b><small>Los LUT de tu cámara, uno por uno o el paquete .zip completo.</small></label>
+      <input type="file" id="lutIn" multiple hidden>
       <ul class="fxgrid" id="lutgrid"></ul>
     </div>
     <div class="tabpane" id="tab-tr" hidden>
@@ -1080,7 +1080,9 @@ async function computePeaks(m, wantBeats) {
   } catch (e) { /* video without an audio track, or a format the browser can't decode for waveforms */ }
 }
 async function importFiles(list) {
+  const luts = [...list].filter(isLutFile); if (luts.length) { importLuts(luts); showTab('fx'); }
   const files = [...list].filter(f => kindOf(f));
+  if (!files.length && luts.length) return;
   if (!files.length) { toast('Esos archivos no son videos, audios ni fotos.'); return; }
   showTab('media');
   // On a phone the library is at the bottom of the page: put what was imported straight on the timeline.
@@ -1558,17 +1560,30 @@ function getLut(id) {
 }
 function lutList() { const b = BFX ? BFX.LUT_LOOKS.map(l => ({ id: l.id, n: l.n })) : []; return b.concat([...LUTS.values()].filter(l => !l.builtin).map(l => ({ id: l.id, n: l.n }))); }
 async function loadLuts() { const rows = await DB.run('luts', 'readonly', s2 => s2.getAll()); if (rows) for (const l of rows) LUTS.set(l.id, l); }
+const isLutFile = f => /\.(cube|zip)$/i.test(f.name);
 async function importLuts(files) {
   if (!BFX) return;
+  const list = [];
   for (const f of files) {
-    if (!/\.cube$/i.test(f.name)) { toast(`"${f.name}" no es un archivo .cube.`); continue; }
     try {
-      const r = BFX.parseCube(await f.text(), f.name.replace(/\.cube$/i, ''));
-      const l = { id: 'u:' + uid(), n: f.name.replace(/\.cube$/i, ''), size: r.size, data: r.data };
-      LUTS.set(l.id, l); await DB.run('luts', 'readwrite', s2 => s2.put(l)); lutThumb(l);
-      toast(`LUT "${l.n}" importado. Arrástralo a un clip para usarlo.`, 4500);
-    } catch (e) { toast(`No se pudo leer "${f.name}": ${e.message}`, 6500); }
+      if (/\.zip$/i.test(f.name)) { const inside = await BFX.unzipCubes(f); if (!inside.length) toast(`"${f.name}" no tiene archivos .cube adentro.`, 5000); list.push(...inside); continue; }
+      const text = await f.text();
+      // phones sometimes rename a .cube to .txt; what counts is that it is a LUT inside
+      if (!/\.cube$/i.test(f.name) && !/LUT_(3D|1D)_SIZE/i.test(text.slice(0, 4000))) { toast(`"${f.name}" no es un LUT (.cube).`); continue; }
+      list.push({ name: f.name, text });
+    } catch (e) { toast(`No se pudo abrir "${f.name}": ${e.message}`, 6500); }
   }
+  let ok = 0, last = null;
+  for (const { name, text } of list) {
+    const n = name.replace(/(\.cube)?(\.txt)?$/i, '');
+    try {
+      const r = BFX.parseCube(text, n);
+      const l = { id: 'u:' + uid(), n, size: r.size, data: r.data };
+      LUTS.set(l.id, l); await DB.run('luts', 'readwrite', s2 => s2.put(l)); lutThumb(l); ok++; last = l;
+    } catch (e) { toast(`No se pudo leer "${name}": ${e.message}`, 6500); }
+  }
+  if (ok === 1) toast(`LUT "${last.n}" importado. Arrástralo a un clip para usarlo.`, 4500);
+  else if (ok > 1) toast(`${ok} LUTs importados. Están en Efectos, sección LUTs.`, 4500);
   renderFxLib(); if (cSel()) renderInspector();
 }
 
@@ -2246,7 +2261,7 @@ window.addEventListener('dragover', e => { if (isFileDrag(e)) e.preventDefault()
 window.addEventListener('drop', e => {
   if (!isFileDrag(e)) return; e.preventDefault(); dragDepth = 0; $('#dropveil').hidden = true;
   if (!$('#landing').hidden) { P.demo ? doNew(P.aspect, true) : enterEditor(); }
-  const files = [...e.dataTransfer.files], cubes = files.filter(f => /\.cube$/i.test(f.name)), rest = files.filter(f => !/\.cube$/i.test(f.name));
+  const files = [...e.dataTransfer.files], cubes = files.filter(isLutFile), rest = files.filter(f => !isLutFile(f));
   if (cubes.length) { importLuts(cubes); showTab('fx'); }
   if (rest.length) importFiles(rest);
 });
