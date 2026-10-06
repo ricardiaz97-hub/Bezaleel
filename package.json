@@ -18,8 +18,16 @@
   "build": {
     "appId": "com.arca.estudio",
     "productName": "Arca Estudio",
-    "files": ["electron/**", "app/**", "build/icon.png", "package.json"],
-    "directories": { "output": "dist", "buildResources": "build" },
+    "files": [
+      "electron/**",
+      "app/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.png",
@@ -31,6 +39,16 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Arca Estudio"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ricardiaz97-hub",
+        "repo": "Ricardo-Vega"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }
