@@ -17,19 +17,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
-      - run: npm run dist:win
+      # Every build gets a new version (1.0.<build number>) so installed copies see it as an update.
       - id: version
         shell: bash
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          npm version "1.0.${{ github.run_number }}" --no-git-tag-version
+          echo "version=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm run dist:win
+      - name: Check the update files exist
+        shell: bash
+        run: ls dist/latest.yml dist/*.exe dist/*.exe.blockmap
       - uses: actions/upload-artifact@v4
         with:
           name: ArcaEstudio-Windows
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Arca Estudio ${{ steps.version.outputs.version }}
-          body: Instalador de Arca Estudio para Windows. Descarga el archivo .exe y ábrelo.
-          files: dist/*.exe
+          body: Instalador de Arca Estudio para Windows. Si ya lo tienes instalado, se actualiza solo; si no, descarga el archivo .exe y ábrelo.
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
           make_latest: true
