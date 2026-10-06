@@ -7,6 +7,7 @@ Bezaleel includes these fonts, each under the [SIL Open Font License 1.1](app/fo
 | Archivo | `archivo-OFL.txt` |
 | Bebas Neue | `bebasneue-OFL.txt` |
 | Caveat | `caveat-OFL.txt` |
+| Geist | `geist-OFL.txt` |
 | JetBrains Mono | `jetbrainsmono-OFL.txt` |
 | Montserrat | `montserrat-OFL.txt` |
 | Oswald | `oswald-OFL.txt` |
@@ -20,4 +21,4 @@ The Windows program is built with [Electron](https://www.electronjs.org/) (MIT L
 
 # Logos
 
-The logos in `app/brand/` (Philly, Taber Olocuilta, Arca and Arpa) belong to their ministries and projects. They are not covered by the GPL-3.0 license of Bezaleel's code. Forks may keep the files in the history, but should not present themselves as these ministries or projects.
+The logos in `app/brand/` (Bezaleel, Philly, Taber Olocuilta, Arca and Arpa) and the app icons in `app/icons/` and `build/` belong to their ministries and projects. They are not covered by the GPL-3.0 license of Bezaleel's code. Forks may keep the files in the history, but should not present themselves as these ministries or projects.

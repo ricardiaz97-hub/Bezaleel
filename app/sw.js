@@ -4,7 +4,7 @@ const SHELL = [
   './', './index.html', './engine.js', './rhythm.js', './person.js',
   './brand/philly.webp', './brand/taber.webp', './brand/arca.webp', './brand/arpa.webp',
   './vendor/rnnoise/workletProcessor.js', './vendor/rnnoise/rnnoise.wasm', './vendor/rnnoise/rnnoise_simd.wasm', './manifest.webmanifest', './fonts.css',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
+  './icons/favicon-64.png', './brand/bezaleel-mark.webp', './brand/bezaleel-lockup.webp', './brand/bezaleel-logo.webp', './brand/shot-editor.webp', './brand/shot-timeline.webp', './brand/shot-effects.webp', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './fonts/Geist-normal-100-900-latin.woff2', './fonts/Geist-normal-100-900-latin-ext.woff2',
   './fonts/Archivo-normal-400-900-latin-ext.woff2',
   './fonts/Archivo-normal-400-900-latin.woff2',
