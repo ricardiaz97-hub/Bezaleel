@@ -872,15 +872,17 @@ function waveThumb(peaks) {
 }
 function probeVideo(m) {
   return new Promise((res, rej) => {
-    const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.playsInline = true;
+    // Safari on iPhone only loads video that is on the page and marked muted and inline.
+    const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.playsInline = true; v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); $('#pool').appendChild(v);
     // Phones (iPhone above all) sometimes never report the seek: once the size is known, settle for
     // whatever frame is there instead of failing the import.
     let done = false, soft = 0;
-    const finish = () => { if (done) return; done = true; clearTimeout(to); clearTimeout(soft); try { if (m.w && v.readyState >= 2) m.thumb = thumbFrom(v, m.w, m.h); } catch (e) {} v.removeAttribute('src'); v.load(); res(); };
-    const to = setTimeout(() => { if (m.w) finish(); else { done = true; rej(new Error('timeout')); } }, 25000);
+    const drop = () => { v.removeAttribute('src'); v.load(); v.remove(); };
+    const finish = () => { if (done) return; done = true; clearTimeout(to); clearTimeout(soft); try { if (m.w && v.readyState >= 2) m.thumb = thumbFrom(v, m.w, m.h); } catch (e) {} drop(); res(); };
+    const to = setTimeout(() => { if (m.w) finish(); else { done = true; drop(); rej(new Error('no terminó de abrir')); } }, 25000);
     v.onloadedmetadata = () => { m.duration = v.duration; m.w = v.videoWidth; m.h = v.videoHeight; if (!isFinite(m.duration)) m.duration = 0; v.currentTime = Math.min(1, (m.duration || 1) * .1); soft = setTimeout(finish, 4000); };
     v.onseeked = finish;
-    v.onerror = () => { if (done) return; done = true; clearTimeout(to); clearTimeout(soft); rej(new Error('video')); };
+    v.onerror = () => { if (done) return; done = true; clearTimeout(to); clearTimeout(soft); const er = v.error; drop(); rej(new Error(['', 'se canceló', 'error de red', 'no se pudo decodificar', 'formato no compatible'][er && er.code || 0] || 'error')); };
     v.src = m.url;
   });
 }
@@ -938,7 +940,8 @@ async function importFiles(list) {
       m.loading = false; storeMedia(m);
       if (auto) addMedia(id);
     } catch (e) {
-      M.delete(id); order = order.filter(x => x !== id); toast(`No se pudo leer "${f.name}". Prueba con MP4, MOV, WEBM, MP3, WAV, JPG o PNG.`, 5000);
+      console.warn('Bezaleel import:', f.name, f.type, f.size, e);
+      M.delete(id); order = order.filter(x => x !== id); toast(`No se pudo leer "${f.name}" (${e && e.message || 'error'} · ${f.type || 'sin tipo'} · ${(f.size / 1e6).toFixed(0)} MB). Prueba con MP4, MOV, WEBM, MP3, WAV, JPG o PNG.`, 9000);
     }
     renderLib();
   }
@@ -1047,7 +1050,7 @@ function elFor(c) {
   if (r && r.mediaId !== c.mediaId) { dropEl(c.id); r = null; }
   if (!r) {
     const el = document.createElement(c.type === 'video' ? 'video' : 'audio');
-    el.preload = 'auto'; el.playsInline = true; el.src = m.url;
+    el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', ''); el.src = m.url;
     el.addEventListener('seeked', () => { if (!playing) requestDraw(); });
     el.addEventListener('loadeddata', () => { if (!playing) { syncMedia(cur, false); requestDraw(); } });
     $('#pool').appendChild(el);
