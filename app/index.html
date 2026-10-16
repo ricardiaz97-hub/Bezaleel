@@ -333,6 +333,24 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .dialog h2{margin:0;font-weight:500;font-size:26px;letter-spacing:-.03em;line-height:1.1}
 .dialog p{margin:0;color:var(--muted);line-height:1.5}
 .dialog .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.dialog.ae{width:min(600px,100%)}
+.ae .vlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:220px;overflow:auto;padding:2px}
+.ae .vitem{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:10px;padding:6px;font-size:12px;cursor:pointer;background:var(--raise)}
+.ae .vitem i{width:48px;height:27px;border-radius:5px;background:#000 center/cover no-repeat}
+.ae .vitem b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ae .vitem em{font-style:normal;color:var(--dim);font-size:11px}
+.ae .vitem:has(input:not(:checked)){opacity:.45}
+.ae .vitem input{position:absolute;opacity:0;pointer-events:none}
+.ae .secs{display:flex;height:22px;border-radius:7px;overflow:hidden;gap:1px;background:var(--sunk)}
+.ae .secs span{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0D0C0B;overflow:hidden;white-space:nowrap;min-width:0}
+.ae .secs .s-suave,.secband.s-suave{background:#8FB3D6}.ae .secs .s-medio,.secband.s-medio{background:#E8B45A}.ae .secs .s-fuerte,.secband.s-fuerte{background:#FF6B1A}
+.ae .secs .win{outline:2px solid var(--fg);outline-offset:-2px}
+.ae input[type=text]{width:100%}
+.secline{display:flex;flex-wrap:wrap;gap:4px}
+.secline span{font-size:10.5px;font-weight:700;color:#0D0C0B;border-radius:5px;padding:2px 6px}
+.secline .s-suave{background:#8FB3D6}.secline .s-medio{background:#E8B45A}.secline .s-fuerte{background:#FF6B1A}
+.secband{position:absolute;top:0;height:4px;opacity:.9;pointer-events:none}
+.secband b{position:absolute;top:4px;left:3px;font-size:9px;font-weight:700;color:var(--fg);white-space:nowrap;text-shadow:0 1px 2px #000;opacity:.85}
 .dialog video{display:block;max-width:100%;max-height:52vh;margin:0 auto;border-radius:8px;background:#000}
 .bar{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden;border:1px solid var(--line)}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#F25E0D,#FF9A5A);transition:width 200ms linear}
@@ -681,6 +699,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
     </div>
     <span class="saved" id="saved">Se guarda solo en este navegador</span>
     <label class="btn" id="bImport" for="fileIn" role="button" tabindex="0"><span data-ic="upload"></span><span class="lbl">Importar</span></label>
+    <button class="btn" id="bAuto" title="Arma un edit al ritmo con tu canción y tus videos"><span data-ic="spark"></span><span class="lbl">Edit automático</span></button>
     <button class="btn primary" id="bExport"><span data-ic="export"></span>Exportar<span class="xl"> video</span></button>
   </header>
 
@@ -801,6 +820,8 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 </div>
 
 <div id="pool" aria-hidden="true"></div>
+<div class="overlay" id="aeDlg" hidden><div class="dialog ae" role="dialog" aria-modal="true" aria-labelledby="aeTitle" id="aeBox"></div></div>
+<input type="file" id="arpIn" accept=".arp,.json" hidden>
 <div class="overlay" id="exDlg" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="exTitle" id="exBox"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="dropveil" id="dropveil" hidden>Suelta los archivos para importarlos</div>
@@ -808,6 +829,9 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 <script src="engine.js"></script>
 <script src="rhythm.js"></script>
 <script src="person.js"></script>
+<script src="sections.js"></script>
+<script src="autoedit.js"></script>
+<script src="export.js"></script>
 <script>
 (() => {
 'use strict';
@@ -878,6 +902,7 @@ function toast(msg, ms = 3200) { const t = $('#toast'); t.textContent = msg; t.h
 
 /* ---------------- model ---------------- */
 const TRACKS = [
+  { id: 'f2', kind: 'fx', name: 'Acabado', h: 30, kc: 'var(--k-fx)' },
   { id: 'f1', kind: 'fx', name: 'Efectos', h: 34, kc: 'var(--k-fx)' },
   { id: 't1', kind: 'text', name: 'Texto 1', h: 38, kc: 'var(--k-text)' },
   { id: 't2', kind: 'text', name: 'Texto 2', h: 38, kc: 'var(--k-text)' },
@@ -886,7 +911,7 @@ const TRACKS = [
   { id: 'a1', kind: 'audio', name: 'Música', h: 44, kc: 'var(--k-audio)' },
   { id: 'a2', kind: 'audio', name: 'Voz', h: 44, kc: 'var(--k-audio)' }
 ];
-const DRAW_ORDER = ['v1', 'v2', 't2', 't1', 'f1'];
+const DRAW_ORDER = ['v1', 'v2', 't2', 't1', 'f1', 'f2'];
 const RES = { '16:9': { 720: [1280, 720], 1080: [1920, 1080] }, '9:16': { 720: [720, 1280], 1080: [1080, 1920] }, '1:1': { 720: [720, 720], 1080: [1080, 1080] }, '4:5': { 720: [720, 900], 1080: [1080, 1350] } };
 const FONTS = ['Archivo', 'Geist', 'Montserrat', 'Bebas Neue', 'Oswald', 'Playfair Display', 'Caveat'];
 const TRANS = [['none', 'Ninguna'], ['fade', 'Fundido'], ['slide', 'Deslizar'], ['up', 'Subir'], ['zoom', 'Acercar'], ['wipe', 'Barrido'], ['blur', 'Desenfoque'], ['spin', 'Girar']];
@@ -924,7 +949,7 @@ const BGS = [
 const KIND_NAME = { video: 'Video', audio: 'Audio', image: 'Foto', color: 'Fondo', text: 'Texto', fx: 'Efecto' };
 const BFX = window.BezaleelFX || null;
 
-function defaultP() { return { name: 'Mi video', aspect: '16:9', q: 1080, fps: 30, bg: '#000000', clips: [], ts: { f1: { hide: false }, t1: { hide: false }, t2: { hide: false }, v2: { hide: false, mute: false }, v1: { hide: false, mute: false }, a1: { mute: false }, a2: { mute: false } }, demo: false }; }
+function defaultP() { return { name: 'Mi video', aspect: '16:9', q: 1080, fps: 30, bg: '#000000', clips: [], ts: { f2: { hide: false }, f1: { hide: false }, t1: { hide: false }, t2: { hide: false }, v2: { hide: false, mute: false }, v1: { hide: false, mute: false }, a1: { mute: false }, a2: { mute: false } }, demo: false }; }
 let P = defaultP();
 const M = new Map();          // media id -> media
 let order = [];               // library order
@@ -1002,7 +1027,7 @@ function saveProject() {
   }, 400);
 }
 async function storeMedia(m) {
-  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats }));
+  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats, sections: m.sections, secSrc: m.secSrc }));
   if (!ok) toast(`"${m.name}" es muy grande para guardarlo en el navegador. Funciona mientras esta pestaña siga abierta.`, 6000);
 }
 
@@ -1076,7 +1101,8 @@ async function computePeaks(m, wantBeats) {
     const mono = beats ? new Float32Array(a.length) : null; let ss = 0, pk = 0;
     for (let i = 0; i < a.length; i++) { const v = b ? (a[i] + b[i]) * .5 : a[i]; ss += v * v; const av = v < 0 ? -v : v; if (av > pk) pk = av; if (mono) mono[i] = v; }
     m.rms = Math.sqrt(ss / Math.max(1, a.length)); m.pk = pk;
-    if (mono) { try { const r = BezaleelRhythm.detect(mono, buf.sampleRate); if (r) m.beats = { bpm: r.bpm, times: r.times.map(x => +x.toFixed(4)), down: r.down, conf: r.conf }; } catch (e) { console.warn('Bezaleel rhythm:', e); } }
+    if (mono) { try { if (!(m.beats && m.beats.arpa)) { const r = BezaleelRhythm.detect(mono, buf.sampleRate); if (r) m.beats = { bpm: r.bpm, times: r.times.map(x => +x.toFixed(4)), down: r.down, conf: r.conf }; } } catch (e) { console.warn('Bezaleel rhythm:', e); } }
+    if (mono && m.beats && m.secSrc !== 'arpa' && window.BezaleelSections) { try { m.sections = BezaleelSections.detect(mono, buf.sampleRate, m.beats); m.secSrc = 'auto'; } catch (e) { console.warn('Bezaleel sections:', e); } }
   } catch (e) { /* video without an audio track, or a format the browser can't decode for waveforms */ }
 }
 async function importFiles(list) {
@@ -1323,7 +1349,9 @@ function drawVisual(c, t, opts) {
   let src = null, sw = W, sh = H;
   if (c.type !== 'color') {
     const m = M.get(c.mediaId); if (!m) return;
-    if (c.type === 'video') { const el = elFor(c); if (!el || el.readyState < 2 || !el.videoWidth) return; src = el; sw = el.videoWidth; sh = el.videoHeight; }
+    const xf = c.type === 'video' && XFR.get(c.id);
+    if (xf) { src = xf.img; sw = xf.w; sh = xf.h; }
+    else if (c.type === 'video') { const el = elFor(c); if (!el || el.readyState < 2 || !el.videoWidth) return; src = el; sw = el.videoWidth; sh = el.videoHeight; }
     else { if (!m.img || !m.img.complete) return; src = m.img; sw = m.w; sh = m.h; }
   }
   const T = trans(c, t, opts);
@@ -1338,8 +1366,13 @@ function drawVisual(c, t, opts) {
   }
   let s = c.sc * T.s;
   const km = c.kbm || (c.kb ? 'in' : ''); // gradual zoom in or out over the clip
-  if (km) { const p = clamp(L / c.dur, 0, 1), a = c.kba != null ? c.kba : .15; s *= km === 'in' ? 1 + a * p : 1 + a * (1 - p); }
-  g.translate(W * c.x + T.dx * W, H * c.y + T.dy * H);
+  let pan = 0;
+  if (km) {
+    const p = clamp(L / c.dur, 0, 1), a = c.kba != null ? c.kba : .15;
+    if (km === 'pl' || km === 'pr') { s *= 1 + a; pan = (km === 'pl' ? 1 : -1) * (p - .5) * a * bw * .5; } // slow pan, a little zoomed in so the edges never show
+    else s *= km === 'in' ? 1 + a * p : 1 + a * (1 - p);
+  }
+  g.translate(W * c.x + T.dx * W + pan, H * c.y + T.dy * H);
   g.rotate((c.rot + T.rot) * Math.PI / 180); g.scale(s, s);
   if (src) g.drawImage(src, -bw / 2, -bh / 2, bw, bh);
   else { g.fillStyle = bgFill(c.bg, bw, bh); g.fillRect(-bw / 2, -bh / 2, bw, bh); }
@@ -1443,7 +1476,7 @@ function clipPasses(c) {
   return ps;
 }
 function beatParams(e, t) { return (+e.beat > 0 && e.amt != null) ? Object.assign({}, e, { amt: e.amt * beatEnv(t, +e.beat, e.decay != null ? +e.decay : .25) }) : e; }
-function runPasses(tex, ps, lt, t) { for (const p of ps) tex = p.grade ? E.grade(tex, p.grade, curveTable(p.grade)) : p.lut ? E.lut(tex, p.lut, p.mix) : E.fx(tex, beatParams(p.e, t), lt); return tex; }
+function runPasses(tex, ps, lt, t, len) { for (const p of ps) tex = p.grade ? E.grade(tex, p.grade, curveTable(p.grade)) : p.lut ? E.lut(tex, p.lut, p.mix) : E.fx(tex, beatParams(p.e, t), lt, len); return tex; }
 function drawInto(ctx2, c, t, opts) {
   const prev = g; g = ctx2; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
   try { c.type === 'text' ? drawText(c, t, opts) : drawVisual(c, t, opts); } finally { g = prev; }
@@ -1485,7 +1518,7 @@ function segComposite(c, layer) {
   return layerS;
 }
 function clipSource(c, t, opts, ctx2, layer) { sizeLayer(layer); drawInto(ctx2, c, t, opts); return segOn(c) && PERSON && PERSON.ready() ? segComposite(c, layer) : layer; }
-function clipTex(c, t, opts, ctx2, layer) { return runPasses(E.upload(clipSource(c, t, opts, ctx2, layer)), clipPasses(c), t - c.start, t); }
+function clipTex(c, t, opts, ctx2, layer) { return runPasses(E.upload(clipSource(c, t, opts, ctx2, layer)), clipPasses(c), t - c.start, t, c.dur); }
 function blit(alpha) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha == null ? 1 : alpha; if (hasFilter) g.filter = 'none'; g.drawImage(E.canvas, 0, 0); g.restore(); }
 function renderClip(c, t, opts) {
   const xw = E.ok ? xWindow(c, t, opts) : null;
@@ -1508,7 +1541,7 @@ function renderJoin(j, t) {
 // A clip on the Efectos track processes everything drawn below it.
 function applyAdjust(c, t) {
   if (!E.ok || !clipPasses(c).length) return;
-  const tex = runPasses(E.upload(cv), clipPasses(c), t - c.start, t);
+  const tex = runPasses(E.upload(cv), clipPasses(c), t - c.start, t, c.dur);
   E.present(tex); blit(clamp(c.op * trans(c, t).a, 0, 1));
 }
 function renderFrame(t) {
@@ -1529,7 +1562,7 @@ function renderFrame(t) {
         sceneMask = PERSON.mask(layerScene, playing);
       }
     }
-    if (tid === 'f1') { for (const c of activeAt(tid, t)) { try { applyAdjust(c, t); } catch (e) { g.restore(); console.warn(e); } } continue; }
+    if (trackOf(tid).kind === 'fx') { for (const c of activeAt(tid, t)) { try { applyAdjust(c, t); } catch (e) { g.restore(); console.warn(e); } } continue; }
     const done = new Set(), inJ = new Set(), outJ = new Set();
     for (const B of P.clips) {
       if (B.track !== tid) continue; const j = joinOf(B); if (!j) continue;
@@ -1664,7 +1697,7 @@ function clipEl(c) {
   if (c.type !== 'fx' && c.efx && c.efx.length) tags.push(c.efx.length === 1 && BFX && BFX.FX[c.efx[0].k] ? BFX.FX[c.efx[0].k].n : c.efx.length + ' efectos');
   if (gradeOn(c)) tags.push('color');
   if (c.lut && c.lut.id) tags.push('LUT');
-  if (c.kbm) tags.push(c.kbm === 'in' ? 'zoom +' : 'zoom −');
+  if (c.kbm) tags.push(c.kbm === 'in' ? 'zoom +' : c.kbm === 'out' ? 'zoom −' : 'paneo');
   if (segOn(c)) tags.push(c.seg.mode === 'blur' ? 'fondo borroso' : c.seg.mode === 'image' ? 'fondo imagen' : 'fondo color');
   if (c.type === 'text' && c.text.behind) tags.push('detrás');
   if (c.au) { if (c.au.nr) tags.push('sin ruido'); if (c.au.voice) tags.push('voz'); if (c.au.duck) tags.push('baja con voz'); if (c.au.eq && c.au.eq.some(Boolean)) tags.push('EQ'); }
@@ -1674,6 +1707,17 @@ function clipEl(c) {
   inner += '<i class="h l" title="Recortar inicio"></i><i class="h r" title="Recortar final"></i>';
   d.innerHTML = inner;
   if (isBound(c) && m && m.peaks) { const w = document.createElement('canvas'); w.className = 'wf'; d.insertBefore(w, d.querySelector('.cl')); drawWave(w, c, m, c.dur * pps, c.type === 'video' ? 18 : 36); }
+  // the song's parts (from Arpa or detected), as colored strips along the top of the clip
+  if (c.type === 'audio' && m && m.sections && m.sections.length) {
+    const a0 = c.in, a1 = c.in + c.dur * c.speed;
+    for (const s2 of m.sections) {
+      if (s2.end <= a0 || s2.t >= a1) continue;
+      const x0 = (Math.max(s2.t, a0) - a0) / c.speed * pps, x1 = (Math.min(s2.end, a1) - a0) / c.speed * pps;
+      const b = document.createElement('i'); b.className = 'secband s-' + s2.level; b.style.left = x0 + 'px'; b.style.width = Math.max(1, x1 - x0 - 1) + 'px';
+      if (x1 - x0 > 46) b.innerHTML = `<b>${esc(s2.name)}</b>`;
+      d.appendChild(b);
+    }
+  }
   return d;
 }
 // Beats of the songs on the Música track, in timeline seconds. k is the position in the bar (0 = beat 1).
@@ -1683,7 +1727,8 @@ function projectBeats() {
   for (const c of P.clips) {
     if (c.type !== 'audio' || c.track !== 'a1') continue; const m = M.get(c.mediaId), bt = m && m.beats; if (!bt || !bt.times) continue;
     const end = c.in + c.dur * c.speed;
-    bt.times.forEach((x, i) => { if (x >= c.in - 1e-3 && x <= end + 1e-3) out.push({ t: c.start + (x - c.in) / c.speed, k: (((i - bt.down) % 4) + 4) % 4 }); });
+    const sg = bt.sig || 4;
+    bt.times.forEach((x, i) => { if (x >= c.in - 1e-3 && x <= end + 1e-3) out.push({ t: c.start + (x - c.in) / c.speed, k: (((i - bt.down) % sg) + sg) % sg }); });
   }
   return out.sort((a, b) => a.t - b.t);
 }
@@ -1910,8 +1955,8 @@ $('#tlBody').addEventListener('wheel', e => {
 }, { passive: false });
 $('#heads').addEventListener('click', e => {
   const h = e.target.closest('[data-hide]'), m = e.target.closest('[data-mute]');
-  if (h) { const ts = P.ts[h.dataset.hide]; ts.hide = !ts.hide; }
-  else if (m) { const ts = P.ts[m.dataset.mute]; ts.mute = !ts.mute; }
+  if (h) { const ts = P.ts[h.dataset.hide] || (P.ts[h.dataset.hide] = {}); ts.hide = !ts.hide; }
+  else if (m) { const ts = P.ts[m.dataset.mute] || (P.ts[m.dataset.mute] = {}); ts.mute = !ts.mute; }
   else return;
   buildTracks(); renderTimeline(); syncMedia(cur, playing); requestDraw(); commit();
 });
@@ -2443,7 +2488,7 @@ function segFields(c) {
 }
 function motionFields(c) {
   const km = c.kbm || (c.kb ? 'in' : '');
-  return `<div class="fld"><span>Zoom gradual</span><div class="seg" role="group" aria-label="Zoom gradual">${[['', 'No'], ['in', 'Acercar'], ['out', 'Alejar']].map(([v, n]) => `<button data-act="kbm:${v}" aria-pressed="${km === v}">${n}</button>`).join('')}</div></div>
+  return `<div class="fld"><span>Zoom gradual</span><div class="seg" role="group" aria-label="Zoom gradual">${[['', 'No'], ['in', 'Acercar'], ['out', 'Alejar'], ['pl', 'Paneo ←'], ['pr', 'Paneo →']].map(([v, n]) => `<button data-act="kbm:${v}" aria-pressed="${km === v}">${n}</button>`).join('')}</div></div>
     ${km ? rng('Cuánto zoom', 'kba', .05, .8, .01, x100, c.kba == null ? Object.assign({}, c, { kba: .15 }) : c) : ''}`;
 }
 function transformFields(c, withFit) {
@@ -2478,6 +2523,8 @@ function rhythmFields(c) {
   let h = bt ? `<p class="note"><b class="big">${Math.round(bt.bpm)} BPM</b> · ${bt.manual ? 'marcado o ajustado a mano' : bt.conf < .25 ? 'el ritmo no es muy claro: conviene marcarlo a mano' : 'detectado automáticamente'} · ${bt.times.length} golpes. Los golpes se ven como marcas amarillas.</p>`
     : `<p class="note">${m.beatsBusy ? 'Escuchando la canción…' : 'Todavía no se detectó el ritmo de esta canción.'}</p>`;
   h += `<div class="btnrow"><button class="btn sm" data-act="beatdetect">${bt ? 'Volver a detectar' : 'Detectar ritmo'}</button><button class="btn sm" data-act="tapstart">Marcar a mano</button></div>`;
+  if (m.sections && m.sections.length) h += `<div class="fld"><span>Partes de la canción · ${m.secSrc === 'arpa' ? 'de Arpa' : 'detectadas al escuchar'}</span><div class="secline">${m.sections.map(s2 => `<span class="s-${s2.level}" title="${esc(s2.name)} · ${fmtS(s2.t)}">${esc(s2.name)}</span>`).join('')}</div></div>`;
+  h += `<div class="btnrow"><button class="btn sm" data-act="arp">${svg('upload')}Usar las partes de Arpa (.arp)</button></div>`;
   if (bt) h += `<div class="fld"><span>Ajustar</span><div class="btnrow"><button class="btn sm" data-act="beat:half">½ más lento</button><button class="btn sm" data-act="beat:double">×2 más rápido</button><button class="btn sm" data-act="beat:minus">−1 BPM</button><button class="btn sm" data-act="beat:plus">+1 BPM</button><button class="btn sm" data-act="beat:early">← Antes</button><button class="btn sm" data-act="beat:late">Después →</button><button class="btn sm" data-act="beat:one">El golpe 1 está en el cabezal</button></div></div>`;
   return h;
 }
@@ -2594,7 +2641,8 @@ insp.addEventListener('click', e => {
   if (act === 'gpaste') { if (!GRADE_CLIP) return; c.grade = JSON.parse(JSON.stringify(GRADE_CLIP)); renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); gradeChanged(c); refreshClip(c); commit(); return; }
   if (act === 'greset') { delete c.grade; renderInspector(); openSec(c.type === 'fx' ? 'Color de todo lo de abajo' : 'Corrección de color'); gradeChanged(c); refreshClip(c); commit(); return; }
   if (act === 'norm') { normalize(c); return; }
-  if (act === 'beatdetect') { detectFor(c); return; }
+  if (act === 'beatdetect') { if (M.get(c.mediaId) && M.get(c.mediaId).secSrc === 'arpa') { M.get(c.mediaId).secSrc = ''; if (M.get(c.mediaId).beats) M.get(c.mediaId).beats.arpa = false; } detectFor(c); return; }
+  if (act === 'arp') { $('#arpIn').click(); return; }
   if (act === 'tapstart') { startTap(c); return; }
   if (act === 'tap') { tapBeat(); return; }
   if (act === 'tapdone') { finishTap(); return; }
@@ -2674,19 +2722,29 @@ function exShow(state, extra) {
   const mime = pickMime(); const ext = mime.includes('mp4') ? 'MP4' : 'WEBM';
   const [w, h] = RES[P.aspect][P.q]; const dur = projectEnd();
   if (state === 'setup') {
-    box.innerHTML = `<h2 id="exTitle">Exportar video</h2>
-      ${mime ? `<p>Se va a crear <b>${esc(safeName())}.${ext.toLowerCase()}</b> · ${w}×${h} · ${fmtS(dur)} de duración.</p>
-      <p>La exportación graba el video en tiempo real: un video de ${fmtS(dur)} tarda unos ${fmtS(dur)}. Deja esta pestaña abierta y a la vista hasta que termine.</p>
+    const xf = EXF_KEY === `${w}x${h}@${P.fps}` ? EXF : undefined;
+    if (xf === undefined) exactFormat().then(() => { if (!$('#exDlg').hidden && $('#exTitle') && $('#exTitle').dataset.st === 'setup') exShow('setup'); });
+    const exact = xf && EXMODE === 'exact', canLive = !!mime && !!cv.captureStream;
+    const fname = `${esc(safeName())}.${exact ? xf.ext : ext.toLowerCase()}`;
+    box.innerHTML = `<h2 id="exTitle" data-st="setup">Exportar video</h2>
+      ${(xf || canLive) ? `<p>Se va a crear <b>${fname}</b> · ${w}×${h} · ${fmtS(dur)} de duración.</p>
+      ${xf || xf === undefined ? `<div class="fld"><span>Cómo exportar</span><div class="seg" role="group" aria-label="Cómo exportar"><button data-ex="mode:exact" aria-pressed="${EXMODE === 'exact'}"${xf ? '' : ' disabled'}>Cuadro por cuadro${xf === undefined ? ' (revisando…)' : ''}</button><button data-ex="mode:live" aria-pressed="${EXMODE !== 'exact'}"${canLive ? '' : ' disabled'}>En tiempo real</button></div></div>` : ''}
+      ${exact ? `<p>Calidad máxima: cada cuadro sale completo y exacto al ritmo, aunque la computadora sea lenta. Puede tardar más o menos que el video. Formato ${esc(xf.label)}.</p>${xf.ext === 'webm' ? '<p class="note">Esta computadora no tiene el codificador MP4: guarda en WEBM. YouTube, Facebook y VLC lo abren sin problema.</p>' : ''}`
+        : `<p>La exportación graba el video en tiempo real: un video de ${fmtS(dur)} tarda unos ${fmtS(dur)}. Deja esta pestaña abierta y a la vista hasta que termine.</p>
       ${ext === 'WEBM' ? '<p class="note">Este navegador guarda en formato WEBM. YouTube, Facebook y VLC lo abren sin problema. Para MP4 usa Chrome o Edge actualizados.</p>' : ''}
-      <label class="chk" for="exListen"><input type="checkbox" id="exListen" checked>Escuchar el audio mientras se exporta</label>` : `<p class="err">Este navegador no puede exportar video. Usa Chrome o Edge en una computadora.</p>`}
-      <div class="row"><button class="btn ghost" data-ex="close">Cancelar</button>${mime && dur > 0 ? '<button class="btn primary" data-ex="go">Empezar a exportar</button>' : ''}</div>`;
+      <label class="chk" for="exListen"><input type="checkbox" id="exListen" checked>Escuchar el audio mientras se exporta</label>`}` : `<p class="err">Este navegador no puede exportar video. Usa Chrome o Edge en una computadora.</p>`}
+      <div class="row"><button class="btn ghost" data-ex="close">Cancelar</button>${(exact || canLive) && dur > 0 ? '<button class="btn primary" data-ex="go">Empezar a exportar</button>' : ''}</div>`;
   } else if (state === 'run') {
     box.innerHTML = `<h2 id="exTitle">Exportando…</h2><p>No cambies de pestaña ni minimices la ventana hasta que termine.</p>
       <div class="bar"><i id="exBar"></i></div><div class="prog"><span id="exNow">0:00.0</span><span>${fmtS(dur)}</span></div>
       <div class="row"><button class="btn ghost" data-ex="cancel">Cancelar</button></div>`;
+  } else if (state === 'runx') {
+    box.innerHTML = `<h2 id="exTitle">Exportando cuadro por cuadro…</h2><p>Puedes dejar la computadora trabajando. No cierres esta ventana hasta que termine.</p>
+      <div class="bar"><i id="exBar"></i></div><div class="prog"><span id="exStage">Preparando…</span></div>
+      <div class="row"><button class="btn ghost" data-ex="cancel">Cancelar</button></div>`;
   } else if (state === 'done') {
     box.innerHTML = `<h2 id="exTitle">Video listo</h2><video controls playsinline src="${extra.url}"></video>
-      <p>${esc(extra.name)} · ${(extra.size / 1048576).toFixed(1)} MB</p><p id="exMsg" class="note"></p>
+      <p>${esc(extra.name)} · ${(extra.size / 1048576).toFixed(1)} MB</p>${extra.note ? `<p class="note">${esc(extra.note)}</p>` : ''}<p id="exMsg" class="note"></p>
       <div class="row"><button class="btn ghost" data-ex="close">Cerrar</button><button class="btn primary" data-ex="save">Guardar en mi computadora</button></div>`;
   }
   paintIcons(box);
@@ -2710,6 +2768,138 @@ async function startExport() {
   cur = 0; syncMedia(0, false); renderFrame(0); await waitSeeks(2500); renderFrame(0);
   if (exCancel) { exporting = false; return; }
   REC.start(500); play();
+}
+/* ---- frame-by-frame export (export.js): exact frames, any computer speed ---- */
+const XFR = new Map(); // clip id -> { img, w, h }: the decoded picture for the frame being exported
+let EXF, EXF_KEY = '', EXMODE = 'exact', EXACT_RUN = false;
+const exBitrate = () => (P.q === 1080 ? 16e6 : 8e6);
+function exactFormat() {
+  const [w, h] = RES[P.aspect][P.q], key = w + 'x' + h + '@' + P.fps;
+  if (EXF !== undefined && EXF_KEY === key) return Promise.resolve(EXF);
+  EXF_KEY = key; EXF = undefined;
+  if (!window.BezaleelExport || !BezaleelExport.supported()) { EXF = false; return Promise.resolve(false); }
+  return BezaleelExport.pickFormat(w, h, P.fps, exBitrate()).then(f => { if (EXF_KEY === key) EXF = f || false; return EXF; }).catch(() => (EXF = false));
+}
+function seekElTo(c, t) {
+  const el = elFor(c); if (!el) return Promise.resolve();
+  let target = Math.max(0, c.in + (t - c.start) * c.speed); if (el.duration && isFinite(el.duration)) target = Math.min(target, el.duration - .02);
+  if (Math.abs(el.currentTime - target) < .001 && !el.seeking && el.readyState >= 2) return Promise.resolve();
+  return new Promise(res => { const to = setTimeout(res, 4000); el.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true }); el.currentTime = target; });
+}
+// Mixes the project's sound offline, a minute at a time, with the same levels, fades, joins, EQ and voice settings as playback.
+let NRW = null;
+async function* mixAudio(dur, note) {
+  const SR = 48000, SEG = 60, OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const clips = P.clips.filter(c => isBound(c) && !c.mute && !(P.ts[c.track] || {}).mute && M.get(c.mediaId) && M.get(c.mediaId).blob);
+  const bufs = new Map();
+  for (const c of clips) {
+    if (bufs.has(c.mediaId)) continue;
+    try { const ab = await M.get(c.mediaId).blob.arrayBuffer(); bufs.set(c.mediaId, await new Promise((res, rej) => { const p = new OAC(2, SR, SR).decodeAudioData(ab, res, rej); if (p && p.catch) p.catch(rej); })); }
+    catch (e) { bufs.set(c.mediaId, null); }
+  }
+  const jw = joinWindows(), duckV = new Map();
+  for (let a = 0; a < dur - 1e-6; a += SEG) {
+    const b = Math.min(dur, a + SEG), len = Math.max(1, Math.round((b - a) * SR)), oac = new OAC(2, len, SR);
+    let nrOk = false;
+    if (clips.some(c => auOf(c).nr)) {
+      try {
+        if (!NRW) { const simd = WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11])); NRW = await fetch(simd ? 'vendor/rnnoise/rnnoise_simd.wasm' : 'vendor/rnnoise/rnnoise.wasm').then(x => x.arrayBuffer()); }
+        await oac.audioWorklet.addModule('vendor/rnnoise/workletProcessor.js'); nrOk = true;
+      } catch (e) { note.nr = true; }
+    }
+    for (const c of clips) {
+      const buf = bufs.get(c.mediaId); if (!buf) continue;
+      const ji = jw.get(c.id + ':in'), jo = jw.get(c.id + ':out');
+      const s0 = ji ? c.start - ji.d / 2 : c.start, e0 = jo ? c.start + c.dur + jo.d / 2 : c.start + c.dur;
+      const w0 = Math.max(s0, a), w1 = Math.min(e0, b); if (w1 - w0 < 1e-3) continue;
+      let off = c.in + (w0 - c.start) * c.speed, when = w0 - a;
+      if (off < 0) { when += -off / c.speed; off = 0; }
+      if (off >= buf.duration || when >= b - a) continue;
+      const au = auOf(c), src = oac.createBufferSource(); src.buffer = buf; src.playbackRate.value = c.speed;
+      const hp = oac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = au.voice ? 90 : 10; hp.Q.value = .707;
+      let last = src;
+      if (au.nr && nrOk) { try { const nr = new AudioWorkletNode(oac, NR_ID, { processorOptions: { maxChannels: 2, wasmBinary: NRW } }); src.connect(nr); last = nr; } catch (e) { note.nr = true; } }
+      last.connect(hp); last = hp;
+      EQ_F.forEach(([type, f], i) => { const q = oac.createBiquadFilter(); q.type = type; q.frequency.value = f; q.Q.value = 1; q.gain.value = (+(au.eq && au.eq[i]) || 0) + (au.voice && i === 3 ? 3 : 0); last.connect(q); last = q; });
+      const comp = oac.createDynamicsCompressor(), mk = oac.createGain();
+      if (au.voice) { comp.threshold.value = -22; comp.ratio.value = 3.5; comp.knee.value = 6; comp.attack.value = .004; comp.release.value = .2; mk.gain.value = 1.6; } else compOff(comp);
+      last.connect(comp); comp.connect(mk);
+      const gn = oac.createGain(); mk.connect(gn); gn.connect(oac.destination);
+      // level curve, 100 points a second
+      const n = Math.max(2, Math.ceil((w1 - w0) * 100)), vals = new Float32Array(n), ts = P.ts[c.track] || {};
+      let dv = duckV.has(c.id) ? duckV.get(c.id) : null;
+      for (let i = 0; i < n; i++) {
+        const t = w0 + i * (w1 - w0) / (n - 1);
+        let lv = audioLevel(c, t);
+        if (ji && t < ji.cut + ji.d / 2) lv = (ji.B.mute || ts.mute ? 0 : c.vol) * Math.sin(clamp((t - (ji.cut - ji.d / 2)) / ji.d, 0, 1) * Math.PI / 2);
+        if (jo && t >= jo.cut - jo.d / 2) lv = (c.mute || ts.mute ? 0 : c.vol) * Math.cos(clamp((t - (jo.cut - jo.d / 2)) / jo.d, 0, 1) * Math.PI / 2);
+        if (au.duck) { const target = voiceAt(t, c) ? .25 : 1; dv = dv == null ? target : dv + (target - dv) * (1 - Math.exp(-.01 / (target < dv ? .08 : .45))); lv *= dv; }
+        vals[i] = lv;
+      }
+      duckV.set(c.id, dv);
+      gn.gain.setValueCurveAtTime(vals, w0 - a, Math.max(.002, w1 - w0));
+      src.start(when, off, Math.max(0, (w1 - a - when) * c.speed));
+    }
+    yield await oac.startRendering();
+  }
+}
+async function startExportExact() {
+  const fmt = await exactFormat(); if (!fmt) { EXMODE = 'live'; return startExport(); }
+  pause(); exCancel = false; exporting = true; EXACT_RUN = true; setCanvasSize();
+  if (needsPerson()) await ensurePerson();
+  const fps = P.fps, dur = projectEnd(), N = Math.max(1, Math.round(dur * fps)), note = {};
+  exShow('runx');
+  const prog = (msg, k) => { const b = $('#exBar'); if (b) b.style.width = (100 * k).toFixed(1) + '%'; const s2 = $('#exStage'); if (s2 && msg != null) s2.textContent = msg; };
+  let out = null, frames = null, blob = null, err = null;
+  try {
+    out = await BezaleelExport.makeOutput(fmt, cv, fps, exBitrate());
+    if (fmt.acodec) {
+      prog('Mezclando el audio…', 0);
+      for await (const buf of mixAudio(dur, note)) { if (exCancel) break; await out.addAudio(buf); }
+    }
+    frames = new BezaleelExport.Frames(fmt.MB);
+    const jw = joinWindows(), vids = [], failed = new Set();
+    for (const c of P.clips) {
+      if (c.type !== 'video' || (P.ts[c.track] || {}).hide) continue; const m = M.get(c.mediaId); if (!m || !m.blob) continue;
+      const ji = jw.get(c.id + ':in'), jo = jw.get(c.id + ':out');
+      const s0 = ji ? c.start - ji.d / 2 : c.start, e0 = jo ? c.start + c.dur + jo.d / 2 : c.start + c.dur;
+      const n0 = Math.max(0, Math.ceil(s0 * fps - 1e-6)), n1 = Math.min(N, Math.ceil(e0 * fps - 1e-6));
+      if (n1 > n0) vids.push({ c, m, n0, n1 });
+    }
+    const t0 = performance.now();
+    for (let n = 0; n < N && !exCancel; n++) {
+      const t = n / fps;
+      for (const v of vids) {
+        if (n >= v.n0 && n < v.n1) {
+          if (failed.has(v.c.id)) { XFR.delete(v.c.id); await seekElTo(v.c, t); continue; }
+          if (!frames.has(v.c.id)) {
+            const vd = v.m.duration || 1e9, times = [];
+            for (let k = v.n0; k < v.n1; k++) times.push(clamp(v.c.in + (k / fps - v.c.start) * v.c.speed, 0, Math.max(0, vd - .02)));
+            if (!(await frames.start(v.c.id, v.m.id, v.m.blob, times, v.m.w || 1920, v.m.h || 1080))) { failed.add(v.c.id); XFR.delete(v.c.id); await seekElTo(v.c, t); continue; }
+          }
+          const img = await frames.next(v.c.id);
+          if (img) XFR.set(v.c.id, { img, w: img.width, h: img.height }); else XFR.delete(v.c.id);
+        } else if (n >= v.n1 && frames.has(v.c.id)) { await frames.stop(v.c.id); XFR.delete(v.c.id); }
+      }
+      cur = t; renderFrame(t);
+      await out.addFrame(t, 1 / fps);
+      if (n % 6 === 0 || n === N - 1) {
+        const el = (performance.now() - t0) / 1000, left = el / (n + 1) * (N - n - 1);
+        prog(`Cuadro ${n + 1} de ${N} · faltan unos ${left < 60 ? Math.max(1, Math.round(left)) + ' s' : Math.round(left / 60) + ' min'}`, (n + 1) / N);
+      }
+    }
+    if (!exCancel) { prog('Guardando el archivo…', 1); blob = await out.finish(); }
+  } catch (e) { err = e; console.warn('Bezaleel exact export:', e); }
+  finally { if (frames) await frames.close(); XFR.clear(); exporting = false; EXACT_RUN = false; }
+  if (exCancel) { if (out) await out.cancel(); $('#exDlg').hidden = true; toast('Exportación cancelada.'); seek(0); return; }
+  if (err || !blob) {
+    if (out) await out.cancel();
+    $('#exBox').innerHTML = `<h2 id="exTitle">No se pudo exportar cuadro por cuadro</h2><p class="err">${esc((err && err.message) || 'Error desconocido')}</p><p>Puedes intentar con la exportación en tiempo real.</p><div class="row"><button class="btn ghost" data-ex="close">Cerrar</button><button class="btn primary" data-ex="golive">Exportar en tiempo real</button></div>`;
+    return;
+  }
+  if (lastExport) URL.revokeObjectURL(lastExport.url);
+  lastExport = { blob, name: safeName() + '.' + fmt.ext, url: URL.createObjectURL(blob), size: blob.size, note: note.nr ? 'La reducción de ruido no se pudo aplicar en este archivo.' : '' };
+  seek(0); exShow('done', lastExport); saveExport();
 }
 function finishExport() {
   if (!REC) return;
@@ -2740,15 +2930,130 @@ $('#exBox').addEventListener('click', e => {
   const b = e.target.closest('[data-ex]'); if (!b) return;
   const a = b.dataset.ex;
   if (a === 'close') $('#exDlg').hidden = true;
-  else if (a === 'go') startExport();
+  else if (a === 'go') { if (EXMODE === 'exact' && EXF) startExportExact(); else startExport(); }
+  else if (a === 'golive') { EXMODE = 'live'; exShow('setup'); }
+  else if (a.startsWith('mode')) { EXMODE = b.dataset.ex.split(':')[1]; exShow('setup'); }
   else if (a === 'save') saveExport();
-  else if (a === 'cancel') { exCancel = true; if (playing) pause(); if (REC) finishExport(); else { exporting = false; $('#exDlg').hidden = true; } }
+  else if (a === 'cancel') { exCancel = true; if (playing) pause(); if (REC) finishExport(); else if (!EXACT_RUN) { exporting = false; $('#exDlg').hidden = true; } }
 });
 $('#bExport').addEventListener('click', () => { if (exporting) return; if (playing) pause(); exShow('setup'); });
 $('#bShot').addEventListener('click', async () => {
   renderFrame(cur);
   const dl = await downloads(); if (!dl) { toast('Aquí no se pueden guardar imágenes.'); return; }
   cv.toBlob(async b => { if (!b) return; try { await dl.save({ filename: `${safeName()} ${fmtS(cur).replace(':', '-')}.png`, data: b }); toast('Imagen guardada.'); } catch (e) { if (e && e.code !== 'declined') toast('No se pudo guardar la imagen.'); } }, 'image/png');
+});
+
+/* ---------------- automatic edit: a song + videos -> a beat-cut edit (see autoedit.js and sections.js) ---------------- */
+const AE = { song: '', vids: null, len: 30, from: 'first', fmt: 'reel', title: null, seed: 1, made: false };
+const LVN = { suave: 'Suave', medio: 'Medio', fuerte: 'Fuerte' };
+const aeSongs = () => order.map(id => M.get(id)).filter(m => m && m.kind === 'audio' && !m.loading);
+const aeVisuals = () => order.map(id => M.get(id)).filter(m => m && (m.kind === 'video' || m.kind === 'image') && !m.loading);
+const cleanName = n => String(n || '').replace(/^[0-9a-f]{6,}[-_ ]+/i, '').replace(/[_]+/g, ' ').replace(/\s+-\s+\d+\s*(bpm)?$/i, '').replace(/\s+/g, ' ').trim();
+function aeWindow(m) {
+  if (!m || !m.beats || !window.BezaleelAutoEdit) return null;
+  return BezaleelAutoEdit.chooseWindow(m.beats, m.sections || [], m.duration || 0, AE.len, AE.from);
+}
+function secBar(m, win) {
+  const S = (m && m.sections) || [], d = (m && m.duration) || 1; if (!S.length) return '';
+  return `<div class="secs" aria-hidden="true">${S.map(s => { const w = (s.end - s.t) / d * 100; const inW = win && s.end > win.t0 + .05 && s.t < win.t1 - .05; return `<span class="s-${s.level}${inW ? ' win' : ''}" style="flex:${w.toFixed(3)} 1 0" title="${esc(s.name)} · ${fmtS(s.t)}">${w > 7 ? esc(s.name) : ''}</span>`; }).join('')}</div>`;
+}
+function aeShow() {
+  const box = $('#aeBox'); $('#aeDlg').hidden = false;
+  const songs = aeSongs(), vis = aeVisuals();
+  if (!AE.song || !M.get(AE.song)) { const onA1 = P.clips.find(c => c.type === 'audio' && c.track === 'a1' && M.get(c.mediaId)); AE.song = onA1 ? onA1.mediaId : (songs[0] ? songs[0].id : ''); }
+  if (!AE.vids) AE.vids = new Set(vis.map(v => v.id));
+  for (const v of vis) if (!AE.known || !AE.known.has(v.id)) AE.vids.add(v.id);
+  AE.known = new Set(vis.map(v => v.id));
+  const m = M.get(AE.song);
+  if (AE.title == null || AE.titleFor !== AE.song) { AE.title = m ? cleanName(m.name) : ''; AE.titleFor = AE.song; }
+  const segB = (k, list, v) => `<div class="seg" role="group">${list.map(([a, n]) => `<button data-ae="${k}:${a}" aria-pressed="${String(v) === String(a)}">${n}</button>`).join('')}</div>`;
+  let songInfo = '';
+  if (m) {
+    const busy = m.beatsBusy, bt = m.beats, S = m.sections || [];
+    const win = bt ? aeWindow(m) : null;
+    songInfo = busy ? '<p class="note">Escuchando la canción para encontrar el ritmo y las partes…</p>'
+      : !bt ? `<p class="note">Todavía no se conoce el ritmo de esta canción.</p><div><button class="btn sm" data-ae="detect">Detectar ritmo y partes</button></div>`
+      : `<p class="note"><b>${Math.round(bt.bpm)} BPM</b> · ${S.length ? `${S.length} partes ${m.secSrc === 'arpa' ? '<b>de Arpa</b>' : 'detectadas al escuchar'}` : 'sin partes detectadas'}${win ? ` · el edit va del ${fmtS(win.t0)} al ${fmtS(win.t1)} (${Math.round(win.t1 - win.t0)} s)` : ''}</p>${secBar(m, win)}`;
+    songInfo += `<div class="btnrow"><button class="btn sm" data-ae="arp">${svg('upload')}Usar las partes de Arpa (.arp)</button>${bt && m.secSrc === 'arpa' ? '<button class="btn sm ghost" data-ae="detect">Volver a escuchar</button>' : ''}</div>
+      <p class="note">En Arpa, cada canción tiene un archivo <b>.arp</b> en su carpeta (Documentos › Stageline › songs). Trae los nombres de las partes y el tiempo exacto del click.</p>`;
+  }
+  box.innerHTML = `<h2 id="aeTitle">Edit automático</h2>
+    <p>Bezaleel corta tus videos al ritmo de la canción: pocos cortes en lo suave, más en el coro, y un golpe fuerte cuando entra. Después puedes cambiar cualquier toma a mano.</p>
+    ${songs.length ? `<div class="fld"><label for="aeSong">Canción</label><select id="aeSong">${songs.map(s2 => `<option value="${s2.id}"${s2.id === AE.song ? ' selected' : ''}>${esc(s2.name)}</option>`).join('')}</select></div>${songInfo}`
+      : '<p class="note err">Primero importa la canción (MP3 o WAV) con el botón <b>Importar</b>.</p>'}
+    <div class="fld"><span>Videos para el edit</span>${vis.length ? `<div class="vlist">${vis.map(v => { const tg = BezaleelAutoEdit.tagOf(v.name); return `<label class="vitem"><input type="checkbox" data-aev="${v.id}"${AE.vids.has(v.id) ? ' checked' : ''}><i style="background-image:url(${v.thumb || ''})"></i><span><b>${esc(v.name)}</b><em>${tg ? 'para lo ' + LVN[tg].toLowerCase() : v.kind === 'image' ? 'foto' : fmtS(v.duration)}</em></span></label>`; }).join('')}</div>
+      <p class="note">Si el nombre de un video dice <b>suave</b>, <b>medio</b> o <b>fuerte</b> (como los fondos de Arpa), se usa en esas partes.</p>` : '<p class="note err">Importa uno o más videos o fotos.</p>'}</div>
+    <div class="fld"><span>Duración</span>${segB('len', [[15, '15 s'], [30, '30 s'], [60, '60 s'], [0, 'Toda la canción']], AE.len)}</div>
+    ${AE.len ? `<div class="fld"><span>Empieza</span>${segB('from', [['first', 'Antes del primer coro'], ['last', 'Antes del último coro'], ['start', 'Desde el inicio']], AE.from)}</div>` : ''}
+    ${P.aspect !== '9:16' ? `<div class="fld"><span>Formato</span>${segB('fmt', [['reel', '9:16 Reels'], ['keep', 'El del proyecto (' + P.aspect + ')']], AE.fmt)}</div>` : ''}
+    <div class="fld"><label for="aeTitleIn">Título al inicio (Enter = dos líneas; vacío = sin título)</label><textarea id="aeTitleIn" rows="2">${esc(AE.title || '')}</textarea></div>
+    ${P.clips.length ? '<p class="note">El edit reemplaza lo que hay en la línea de tiempo. Si no te gusta, Ctrl+Z lo deshace.</p>' : ''}
+    <div class="row"><button class="btn ghost" data-ae="close">Cerrar</button><button class="btn primary" data-ae="go"${m && m.beats && !m.beatsBusy && vis.length && AE.vids.size ? '' : ' disabled'}>${svg('spark')}${AE.made ? 'Crear otra versión' : 'Crear edit'}</button></div>`;
+  paintIcons(box);
+}
+async function aeDetect(m) {
+  m.beatsBusy = true; aeShow();
+  await computePeaks(m, true); m.beatsBusy = false; storeMedia(m); renderTimeline(); aeShow();
+}
+async function importArp(file, m) {
+  try {
+    const r = BezaleelSections.fromArpa(await file.text(), m.duration);
+    if (!r.sections.length && !r.beats) throw new Error('Esa canción de Arpa no tiene marcadores ni cuadrícula de tiempo.');
+    if (r.beats) m.beats = r.beats;
+    if (r.sections.length) { m.sections = r.sections; m.secSrc = 'arpa'; }
+    storeMedia(m); BEATS = projectBeats(); renderTimeline(); requestDraw();
+    toast(`Partes de Arpa: ${r.sections.length}${r.beats ? ` · ${Math.round(r.beats.bpm)} BPM del click` : ''}.`, 4500);
+  } catch (e) { toast(e.message || 'No se pudo leer ese archivo de Arpa.', 6000); }
+}
+function aeCreate() {
+  const m = M.get(AE.song); if (!m || !m.beats) return;
+  const vis = aeVisuals().filter(v => AE.vids.has(v.id));
+  if (!vis.length) { toast('Elige al menos un video.'); return; }
+  pause();
+  if (AE.fmt === 'reel' && P.aspect !== '9:16') { P.aspect = '9:16'; setCanvasSize(); }
+  const [W, H] = RES[P.aspect][P.q];
+  const win = aeWindow(m);
+  const R = BezaleelAutoEdit.build({ beats: m.beats, sections: m.sections || [], duration: m.duration, t0: win.t0, t1: win.t1, W, H, seed: AE.seed++,
+    title: ($('#aeTitleIn') ? $('#aeTitleIn').value : AE.title) || '', videos: vis.map(v => ({ id: v.id, kind: v.kind, duration: v.duration, w: v.w, h: v.h, name: v.name })) });
+  if (!R) { toast('No se pudo armar el edit con esos videos.'); return; }
+  for (const c of P.clips) if (isBound(c)) dropEl(c.id);
+  P.clips = []; SEL = null;
+  P.clips.push(newClip('audio', 'a1', 0, R.song.dur, { mediaId: m.id, in: R.song.in, afi: .03, afo: Math.min(1.4, R.song.dur / 4) }));
+  const fxOf = list => (list || []).map(x => Object.assign(newEfx(x.k, x.beat || 0), x, { id: uid() }));
+  for (const s2 of R.shots) {
+    const c = newClip(s2.kind === 'image' ? 'image' : 'video', 'v1', s2.start, s2.dur, { mediaId: s2.mediaId, in: s2.in, speed: s2.speed, fit: 'cover', x: s2.x, y: s2.y, sc: s2.sc, kbm: s2.kbm, kba: s2.kba, mute: true, efx: fxOf(s2.efx) });
+    if (s2.join) c.join = s2.join;
+    if (s2.tin) c.tin = s2.tin; if (s2.tout) c.tout = s2.tout;
+    P.clips.push(c);
+  }
+  for (const f of R.fx) P.clips.push(newClip('fx', f.track || 'f1', f.start, f.dur, { efx: fxOf(f.efx), lut: f.lut || null }));
+  R.text.forEach((t, i) => { const c = newText(t.s, t.style, { start: t.start, dur: t.dur, y: t.y, track: i ? 't2' : 't1' }); c.tin = t.tin; c.tout = t.tout; P.clips.push(c); loadFont(c); });
+  if (!P.name || P.name === 'Mi video') P.name = cleanName(m.name) || 'Edit';
+  AE.made = true; $('#aeDlg').hidden = true;
+  BEATS = projectBeats(); renderAll(); fitZoom(); seek(0); commit();
+  toast(`Edit listo: ${R.cuts} tomas${R.drops ? ', con la entrada del coro marcada' : ''}. Dale Reproducir. Para otra versión, abre Edit automático otra vez.`, 6500);
+}
+$('#bAuto').addEventListener('click', () => { if (exporting) return; if (playing) pause(); AE.made = false; aeShow(); });
+$('#aeBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-ae]'); if (!b) return;
+  const [a, v] = b.dataset.ae.split(':'); const m = M.get(AE.song);
+  if (a === 'close') { $('#aeDlg').hidden = true; return; }
+  if (a === 'go') { AE.title = $('#aeTitleIn') ? $('#aeTitleIn').value : AE.title; aeCreate(); return; }
+  if (a === 'detect' && m) { if (m.secSrc === 'arpa') { m.secSrc = ''; if (m.beats) m.beats.arpa = false; } aeDetect(m); return; }
+  if (a === 'arp') { $('#arpIn').click(); return; }
+  if (a === 'len') AE.len = +v; else if (a === 'from') AE.from = v; else if (a === 'fmt') AE.fmt = v;
+  AE.title = $('#aeTitleIn') ? $('#aeTitleIn').value : AE.title; aeShow();
+});
+$('#aeBox').addEventListener('change', e => {
+  if (e.target.id === 'aeSong') { AE.song = e.target.value; aeShow(); return; }
+  const id = e.target.dataset.aev; if (id) { e.target.checked ? AE.vids.add(id) : AE.vids.delete(id); AE.title = $('#aeTitleIn').value; aeShow(); }
+});
+$('#arpIn').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+  const target = $('#aeDlg').hidden ? (cSel() && M.get(cSel().mediaId)) : M.get(AE.song);
+  if (!target) { toast('Primero elige la canción.'); return; }
+  await importArp(f, target);
+  if (!$('#aeDlg').hidden) aeShow(); else renderInspector();
 });
 
 /* ---------------- wiring ---------------- */

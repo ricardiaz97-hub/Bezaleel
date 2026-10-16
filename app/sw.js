@@ -1,7 +1,7 @@
 // Keeps Bezaleel working without internet. Bump VERSION when any app file changes.
-const VERSION = 'bezaleel-v11';
+const VERSION = 'bezaleel-v12';
 const SHELL = [
-  './', './index.html', './engine.js', './rhythm.js', './person.js',
+  './', './index.html', './engine.js', './rhythm.js', './person.js', './sections.js', './autoedit.js', './export.js', './vendor/mediabunny/mediabunny.min.js',
   './brand/philly.webp', './brand/taber.webp', './brand/arca.webp', './brand/arpa.webp',
   './vendor/rnnoise/workletProcessor.js', './vendor/rnnoise/rnnoise.wasm', './vendor/rnnoise/rnnoise_simd.wasm', './manifest.webmanifest', './fonts.css',
   './icons/favicon-64.png', './brand/bezaleel-mark.webp', './brand/bezaleel-lockup.webp', './brand/bezaleel-logo.webp', './brand/shot-editor.webp', './brand/shot-timeline.webp', './brand/shot-effects.webp', './brand/photos/worship.webp', './brand/photos/comunidad.webp', './brand/photos/demo-detras.webp', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
