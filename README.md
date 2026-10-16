@@ -28,7 +28,8 @@ Your videos never leave your computer. Projects are stored locally on each machi
 - Person detection without a green screen: titles behind the person, and the background blurred or replaced by a color or photo (MediaPipe, on your computer)
 - Color filters, audio fades and crossfades, detaching audio from video
 - 16:9, 9:16, 1:1 and 4:5 formats
-- Export to MP4
+- **Edit automático:** pick a song and some videos, and Bezaleel cuts them on the beat, with fewer cuts in soft parts, more in the chorus, a build-up and a hit when the chorus comes in. Song parts come from an Arpa `.arp` file (named markers and the exact click grid) or are found by listening. Everything it makes stays editable
+- Export to MP4, frame by frame (every frame exact, at any computer speed) or in real time
 
 See [docs/STANDARDS.md](docs/STANDARDS.md) for the mission, the promises the project keeps, the hardware we build for and the roadmap.
 
@@ -39,6 +40,10 @@ See [docs/STANDARDS.md](docs/STANDARDS.md) for the mission, the promises the pro
 | `app/index.html` | The editor |
 | `app/engine.js` | The effects engine: every effect, transition and built-in LUT, as WebGL 2 shaders |
 | `app/rhythm.js` | Beat detection and tap tempo |
+| `app/sections.js` | Song parts: reads Arpa `.arp` files, or finds the parts by listening, with a strength of suave, medio or fuerte |
+| `app/autoedit.js` | Edit automático: turns a song, its parts and some videos into ordinary clips, joins and effect layers |
+| `app/export.js` | Frame-by-frame export with WebCodecs |
+| `app/vendor/mediabunny/` | Mediabunny, which reads the videos and writes the MP4 or WEBM (third-party, see NOTICE) |
 | `app/person.js` | Person detection for titles behind people and background replacement |
 | `app/vendor/mediapipe/` | Google's MediaPipe vision engine and selfie segmentation model (third-party, see NOTICE) |
 | `app/vendor/rnnoise/` | The noise reduction model and its worklet (third-party, see NOTICE) |

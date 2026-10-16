@@ -17,6 +17,8 @@ Noise reduction uses [RNNoise](https://github.com/xiph/rnnoise) (Xiph.Org, Mozil
 
 Person detection uses Google's [MediaPipe Tasks Vision](https://github.com/google-ai-edge/mediapipe) and its selfie segmentation model, both under the Apache License 2.0. The files and the license are in `app/vendor/mediapipe/`.
 
+Frame-by-frame export reads and writes video with [Mediabunny](https://github.com/Vanilagy/mediabunny) (Vanilagy and contributors; Mozilla Public License 2.0). Its unmodified file and license are in `app/vendor/mediabunny/`; the source is at the link above.
+
 The Windows program is built with [Electron](https://www.electronjs.org/) (MIT License) and uses [electron-updater](https://www.electron.build/) (MIT License).
 
 # Logos

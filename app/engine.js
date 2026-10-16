@@ -7,7 +7,7 @@
  *
  * Adding an effect: add an entry to FX with its parameters and a GLSL body that writes `o`
  * (premultiplied RGBA) from the input layer sampled with S(uv). Parameters become uniforms
- * named u_<key>. `uT` is seconds since the clip started, `uR` the frame size in pixels.
+ * named u_<key>. `uT` is seconds since the clip started, `uD` the clip's length in seconds, `uR` the frame size in pixels.
  * An effect with an `amt` parameter can also follow the music: the editor scales `amt` on each beat.
  *
  * Adding a transition: add an entry to TRX. Its body mixes SA(uv) (outgoing) and SB(uv)
@@ -26,6 +26,21 @@
       vec2 q = v - .5; vec4 acc = vec4(0.);
       for (int i = 0; i < 10; i++) acc += S(q * (1. - float(i) * u_amt * .012) / (1. + u_amt * .22) + .5);
       o = acc / 10.;` },
+    impact: { n: 'Impacto', p: { amt: amt(.6) }, g: `
+      float k = u_amt * exp(-uT / .09), f = u_amt * exp(-uT / .05);
+      vec2 q = v - .5; vec4 acc = vec4(0.);
+      for (int i = 0; i < 10; i++) acc += S(q * (1. - float(i) * k * .02) / (1. + k * .3) + .5);
+      vec4 c = acc / 10.;
+      o = vec4(min(c.rgb + vec3(c.a) * f * .28, vec3(c.a)), c.a);` },
+    riser: { n: 'Subida (antes del coro)', p: { amt: amt(.7) }, g: `
+      float p = clamp(uT / max(uD, .05), 0., 1.), e = p * p * p * u_amt;
+      vec2 q = v - .5; float t = uT * 30.;
+      vec2 sh = (vec2(n1(t), n1(t + 9.)) - .5) * .012 * e;
+      vec4 acc = vec4(0.);
+      for (int i = 0; i < 8; i++) acc += S(q * (1. - float(i) * e * .006) / (1. + e * .2) + .5 + sh);
+      vec4 c = acc / 8.; vec3 u = unp(c); float l = dot(u, vec3(.299, .587, .114));
+      u = mix(u, vec3(l), .45 * p * p * u_amt) * (1. - .3 * p * p * u_amt);
+      o = vec4(u * c.a, c.a);` },
     flash: { n: 'Destello', beat: 1, p: { amt: amt(.6), col: { n: 'Color', t: 'color', def: '#FFFFFF' } }, g: `
       vec4 c = S(v); o = vec4(mix(c.rgb, u_col * c.a, u_amt * .85), c.a);` },
     ab: { n: 'Aberración cromática', p: { amt: amt(.5) }, g: `
@@ -185,6 +200,16 @@
       float e = smoothstep(0., 1., uP), blur = sin(uP * 3.1416) * .15; vec4 acc = vec4(0.);
       for (int i = 0; i < 14; i++) { float k = (float(i) / 13. - .5) * blur; acc += SA(v + vec2(e + k, 0.)) + SB(v - vec2(1. - e - k, 0.)); }
       o = acc / 14.;` },
+    spin: { n: 'Giro', g: `
+      vec2 asp = vec2(uR.x / uR.y, 1.); float s = sin(uP * 3.1416);
+      float ang = (uP < .5 ? uP : uP - 1.) * 1.4; float z = 1. + s * .6;
+      vec4 a = vec4(0.), b = vec4(0.);
+      for (int i = 0; i < 12; i++) {
+        float f = float(i) / 11. - .5, an = ang + f * s * .35;
+        vec2 q = (v - .5) * asp; q = mat2(cos(an), -sin(an), sin(an), cos(an)) * q / z / asp + .5;
+        a += SA(q); b += SB(q);
+      }
+      o = mix(a / 12., b / 12., step(.5, uP));` },
     wipe: { n: 'Barrido', g: `
       float e = uP * 1.1 - .05; o = mix(SA(v), SB(v), 1. - smoothstep(e - .04, e + .04, v.x));` },
     circle: { n: 'Círculo', g: `
@@ -278,7 +303,7 @@ vec3 unp(vec4 c) { return c.a > 0. ? c.rgb / c.a : vec3(0.); }
 bool outside(vec2 uv) { return uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.; }`;
   const HEAD = `#version 300 es
 precision highp float; precision highp sampler3D;
-in vec2 v; out vec4 o; uniform vec2 uR; uniform float uT;`;
+in vec2 v; out vec4 o; uniform vec2 uR; uniform float uT, uD;`;
   const fxSource = d => `${HEAD}
 uniform sampler2D T;
 ${Object.entries(d.p).map(([k, p]) => `uniform ${p.t === 'color' ? 'vec3' : 'float'} u_${k};`).join('\n')}
@@ -412,11 +437,11 @@ in vec2 p; out vec2 v; void main() { v = p * .5 + .5; gl_Position = vec4(p, 0., 
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       s.w = src.width; s.h = src.height; return s.tex;
     };
-    api.fx = (tex, e, t) => {
+    api.fx = (tex, e, t, len) => {
       const d = FX[e.k]; if (!d) return tex;
       const pr = program('fx:' + e.k, fxSource(d)); if (!pr) return tex;
       return run(pr, [{ u: 'T', t: tex, unit: 0 }], p => {
-        gl.uniform1f(U(p, 'uT'), t);
+        gl.uniform1f(U(p, 'uT'), t); gl.uniform1f(U(p, 'uD'), len || 0);
         for (const [k, pd] of Object.entries(d.p)) {
           const val = e[k] != null ? e[k] : pd.def;
           if (pd.t === 'color') { const c = hexRGB(val); gl.uniform3f(U(p, 'u_' + k), c[0], c[1], c[2]); } else gl.uniform1f(U(p, 'u_' + k), +val);
