@@ -38,7 +38,7 @@
   function chooseWindow(beats, secs, duration, target, from) {
     if (!target || target >= duration - 1) return { t0: 0, t1: duration };
     const G = grid(beats, secs), downs = G.filter(b => b.k === 0).map(b => b.t), per = beats.times.length > 1 ? (beats.times[beats.times.length - 1] - beats.times[0]) / (beats.times.length - 1) : .5;
-    const bar = per * (beats.sig || 4);
+    const bar = per * (beats.sig || 4) * (60 / per >= 130 ? 2 : 1); // fast grids are edited in half time
     const dr = drops(secs).filter(t => t > 6);
     let anchor = 0;
     if (from !== 'start') {
@@ -62,7 +62,15 @@
     const r = rng(opts.seed || 7);
     const secs = (opts.sections && opts.sections.length) ? opts.sections : [{ t: 0, end: opts.duration, level: 'medio', name: '' }];
     const { t0, t1, W, H } = opts;
-    const G = grid(opts.beats, secs), per = opts.beats.times.length > 1 ? (opts.beats.times[opts.beats.times.length - 1] - opts.beats.times[0]) / (opts.beats.times.length - 1) : .5;
+    // Fast grids (130 BPM and up, like a 69 BPM song counted in eighths) are edited in half time: the cuts and hits
+    // follow the beat people feel, not every click.
+    const bt0 = opts.beats, per0 = bt0.times.length > 1 ? (bt0.times[bt0.times.length - 1] - bt0.times[0]) / (bt0.times.length - 1) : .5;
+    const half = 60 / per0 >= 130, down0 = bt0.down || 0;
+    const beats = half ? { times: bt0.times.filter((_, i) => ((i - down0) % 2 + 2) % 2 === 0), down: 0, sig: bt0.sig || 4 } : bt0;
+    if (half) beats.down = Math.max(0, beats.times.indexOf(bt0.times[down0]));
+    const G = grid(beats, secs), per = per0 * (half ? 2 : 1);
+    // how a hit "every edit beat" is written for the editor, whose beats are the song's grid
+    const every = n => Math.min(4, n * (half ? 2 : 1));
     const inWin = G.filter(b => b.t >= t0 - 1e-3 && b.t < t1 - 1e-3);
     const D = inWin.filter(b => b.k === 0);
     const dr = drops(secs).filter(t => t > t0 + .05 && t < t1 - .05);
@@ -136,7 +144,10 @@
       const efx = [];
       if (drop) efx.push({ k: 'impact', amt: 1 }, { k: 'shake', amt: .55, spd: .6, beat: 4, decay: .35 }, { k: 'ab', amt: .8, beat: 4, decay: .28 }, { k: 'flash', amt: .3, col: '#FF8A3D', beat: 4, decay: .7 });
       else if (i > 0 && !join && lvl !== 'suave') efx.push({ k: 'impact', amt: lvl === 'fuerte' ? .55 : .35 });
-      if (lvl === 'fuerte') efx.push({ k: 'punch', amt: .32, beat: 1, decay: .11 });
+      // every shot moves with the music: a zoom pulse on each beat in fuerte, every 2 beats in medio, every bar in suave
+      if (lvl === 'fuerte') efx.push({ k: 'punch', amt: .34, beat: every(1), decay: .11 });
+      else if (lvl === 'medio') efx.push({ k: 'punch', amt: .2, beat: every(2), decay: .14 });
+      else efx.push({ k: 'punch', amt: .12, beat: 4, decay: .22 });
       out.shots.push({ mediaId: v.id, kind: v.kind, start: P(a), dur: +(dur).toFixed(4), in: inPt, speed, x: +x.toFixed(4), y: +y.toFixed(4), sc: +sc.toFixed(3), kbm: km, kba, join, efx, level: lvl, drop });
     }
     const first = out.shots[0], lastS = out.shots[out.shots.length - 1];
@@ -159,7 +170,7 @@
       out.text.push({ s: big, start: at + .3, dur: len - .3, y: vertical ? .16 : .3, style: { font: 'Bebas Neue', size: vertical ? 200 : 170, w: 400, up: true, shadow: true }, tin: { t: 'blur', d: .7 }, tout: { t: 'blur', d: .5 } });
       if (small) out.text.push({ s: small, start: at, dur: len, y: vertical ? .095 : .19, style: { font: 'Montserrat', size: vertical ? 54 : 46, w: 800, up: true, shadow: true }, tin: { t: 'up', d: .7 }, tout: { t: 'fade', d: .5 } });
     }
-    out.cuts = cuts.length - 1; out.drops = dr.length;
+    out.cuts = cuts.length - 1; out.drops = dr.length; out.half = half;
     return out;
   }
 

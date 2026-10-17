@@ -1027,7 +1027,7 @@ function saveProject() {
   }, 400);
 }
 async function storeMedia(m) {
-  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats, sections: m.sections, secSrc: m.secSrc }));
+  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats, sections: m.sections, secSrc: m.secSrc, pxBlob: m.pxBlob, pxChecked: m.pxChecked }));
   if (!ok) toast(`"${m.name}" es muy grande para guardarlo en el navegador. Funciona mientras esta pestaña siga abierta.`, 6000);
 }
 
@@ -1124,6 +1124,7 @@ async function importFiles(list, preset) {
       else if (m.kind === 'audio') { await probeAudio(m); await computePeaks(m); m.thumb = waveThumb(m.peaks); }
       else { await loadImage(m); m.thumb = thumbFrom(m.img, m.w, m.h); }
       m.loading = false; storeMedia(m);
+      if (m.kind === 'video') queueProxy(m);
       if (auto) addMedia(id);
     } catch (e) {
       console.warn('Bezaleel import:', f.name, f.type, f.size, e);
@@ -1134,8 +1135,35 @@ async function importFiles(list, preset) {
   saveProject(); renderTimeline();
   return ids.filter(id => M.has(id));
 }
+/* Preview copies (see makeProxy in export.js): videos with key frames far apart get a light copy for smooth playback
+   and fast cuts. The original stays untouched and is what the frame-by-frame export reads. */
+const PXQ = []; let pxBusy = false;
+function queueProxy(m) { if (!m || m.kind !== 'video' || m.pxBlob || m.pxChecked || PXQ.includes(m)) return; PXQ.push(m); runProxies(); }
+async function runProxies() {
+  if (pxBusy || !window.BezaleelExport || !BezaleelExport.supported()) return; pxBusy = true;
+  try {
+    while (PXQ.length) {
+      const m = PXQ.shift(); if (!M.has(m.id) || m.pxBlob) continue;
+      try {
+        const gap = await BezaleelExport.keyGap(m.blob);
+        if (gap > 1.2 && (m.duration || 0) <= 900) {
+          m.pxBusy = true; renderLib();
+          const blob = await BezaleelExport.makeProxy(m.blob, p => { const n = Math.round(p * 100); if (n % 10 === 0) toast(`Preparando "${m.name}" para que la vista previa no se trabe… ${n}%`, 4000); });
+          if (blob && M.has(m.id)) {
+            m.pxBlob = blob; m.pxUrl = URL.createObjectURL(blob);
+            for (const c of P.clips) if (c.mediaId === m.id) dropEl(c.id);
+            syncMedia(cur, playing); requestDraw();
+          }
+        }
+        m.pxChecked = true; storeMedia(m);
+      } catch (e) { console.warn('Bezaleel preview copy:', m.name, e); m.pxChecked = true; }
+      m.pxBusy = false; renderLib();
+    }
+  } finally { pxBusy = false; }
+}
 function restoreMedia(r) {
   const m = Object.assign({}, r, { url: URL.createObjectURL(r.blob), loading: false });
+  if (m.pxBlob) m.pxUrl = URL.createObjectURL(m.pxBlob);
   M.set(m.id, m);
   if (m.kind === 'image') loadImage(m).then(requestDraw).catch(() => {});
   return m;
@@ -1237,7 +1265,7 @@ function elFor(c) {
   if (r && r.mediaId !== c.mediaId) { dropEl(c.id); r = null; }
   if (!r) {
     const el = document.createElement(c.type === 'video' ? 'video' : 'audio');
-    el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', ''); el.src = m.url;
+    el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', ''); el.src = m.pxUrl || m.url;
     el.addEventListener('seeked', () => { if (!playing) requestDraw(); });
     el.addEventListener('loadeddata', () => { if (!playing) { syncMedia(cur, false); requestDraw(); } });
     $('#pool').appendChild(el);
@@ -1350,6 +1378,19 @@ function bgFill(bg, w, h) {
   const gr = g.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(w, h) / 2); gr.addColorStop(0, bg.c1); gr.addColorStop(1, bg.c2); return gr;
 }
 function applyWipe(T, W, H) { if (!T.wipe) return; const p = T.wipe.p; g.beginPath(); if (!T.wipe.out) g.rect(0, 0, W * p, H); else g.rect(W * (1 - p), 0, W * p, H); g.clip(); }
+const LASTF = new Map(); // media id -> canvas with the last picture shown from that video
+const THIMG = new Map(); // media id -> its thumbnail as an image, the stand-in before a video has shown any frame
+function thumbImg(m) {
+  if (!m || !m.thumb) return null; let im = THIMG.get(m.id);
+  if (!im) { im = new Image(); im.onload = () => requestDraw(); im.src = m.thumb; THIMG.set(m.id, im); }
+  return im.complete && im.naturalWidth ? im : null;
+}
+function keepFrame(id, el) {
+  let f = LASTF.get(id); const w = Math.min(640, el.videoWidth), h = Math.round(el.videoHeight * w / el.videoWidth);
+  if (!f) { f = document.createElement('canvas'); LASTF.set(id, f); }
+  if (f.width !== w || f.height !== h) { f.width = w; f.height = h; }
+  try { f.getContext('2d').drawImage(el, 0, 0, w, h); } catch (e) {}
+}
 function drawVisual(c, t, opts) {
   const W = cv.width, H = cv.height, k = Math.min(W, H) / 1080, L = t - c.start;
   let src = null, sw = W, sh = H;
@@ -1357,7 +1398,12 @@ function drawVisual(c, t, opts) {
     const m = M.get(c.mediaId); if (!m) return;
     const xf = c.type === 'video' && XFR.get(c.id);
     if (xf) { src = xf.img; sw = xf.w; sh = xf.h; }
-    else if (c.type === 'video') { const el = elFor(c); if (!el || el.readyState < 2 || !el.videoWidth) return; src = el; sw = el.videoWidth; sh = el.videoHeight; }
+    else if (c.type === 'video') {
+      const el = elFor(c), lf = LASTF.get(c.mediaId) || thumbImg(m);
+      // a video that is still loading or seeking shows the last picture of that video instead of black
+      if (!el || el.readyState < 2 || !el.videoWidth || el.seeking) { if (!lf) return; src = lf; sw = lf.width; sh = lf.height; }
+      else { src = el; sw = el.videoWidth; sh = el.videoHeight; if (!exporting) keepFrame(c.mediaId, el); }
+    }
     else { if (!m.img || !m.img.complete) return; src = m.img; sw = m.w; sh = m.h; }
   }
   const T = trans(c, t, opts);
@@ -2184,7 +2230,7 @@ function renderLib() {
       <div class="mthumb" style="${m.thumb ? `background-image:url(${m.thumb})` : ''}">${!m.thumb && !m.loading ? svg(m.kind === 'audio' ? 'music' : 'upload') : ''}</div>
       <span class="mkind">${KIND_NAME[m.kind]}</span>${m.duration ? `<span class="mdur">${fmtS(m.duration)}</span>` : ''}
       <div class="macts"><button class="add" data-add="${m.id}" aria-label="Agregar ${esc(m.name)} a la línea de tiempo">${svg('plus')}Agregar</button><button data-rm="${m.id}" aria-label="Quitar ${esc(m.name)}">${svg('trash')}</button></div>
-      <div class="mbody"><b title="${esc(m.name)}">${esc(m.name)}</b><span>${m.kind === 'image' ? (m.w + '×' + m.h) : m.kind === 'video' ? (m.w + '×' + m.h) : 'Audio'}</span></div></li>`).join('');
+      <div class="mbody"><b title="${esc(m.name)}">${esc(m.name)}</b><span>${m.kind === 'image' ? (m.w + '×' + m.h) : m.kind === 'video' ? (m.pxBusy ? 'Preparando vista previa…' : m.w + '×' + m.h) : 'Audio'}</span></div></li>`).join('');
 }
 $('#mgrid').addEventListener('click', e => {
   const a = e.target.closest('[data-add]'); if (a) { addMedia(a.dataset.add); return; }
@@ -3252,6 +3298,7 @@ async function init() {
   setZoom(60, 0);
   const [proj, media] = await Promise.all([DB.run('kv', 'readonly', s => s.get('project')), DB.run('media', 'readonly', s => s.getAll())]);
   if (media && media.length) for (const r of media) restoreMedia(r);
+  setTimeout(() => { for (const m of M.values()) queueProxy(m); }, 3000);
   if (proj && proj.P) {
     P = Object.assign(defaultP(), proj.P); P.ts = Object.assign(defaultP().ts, proj.P.ts || {});
     order = (proj.order || []).filter(id => M.has(id)); for (const id of M.keys()) if (!order.includes(id)) order.push(id);
