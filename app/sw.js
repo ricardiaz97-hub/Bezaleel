@@ -1,5 +1,5 @@
 // Keeps Bezaleel working without internet. Bump VERSION when any app file changes.
-const VERSION = 'bezaleel-v12';
+const VERSION = 'bezaleel-v13';
 const SHELL = [
   './', './index.html', './engine.js', './rhythm.js', './person.js', './sections.js', './autoedit.js', './export.js', './vendor/mediabunny/mediabunny.min.js',
   './brand/philly.webp', './brand/taber.webp', './brand/arca.webp', './brand/arpa.webp',
