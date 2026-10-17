@@ -87,5 +87,39 @@
     };
   }
 
-  window.BezaleelExport = { supported, load, pickFormat, Frames, makeOutput };
+  /* Preview copies. A video whose key frames are far apart (AI backgrounds often have one in 10 s) makes the player
+     decode from the start on every seek, so fast cuts show black while it catches up. The fix is a light copy with a
+     key frame every quarter second, used only by the preview; the export keeps reading the original. */
+  async function keyGap(blob) {
+    const MB = await load();
+    const input = new MB.Input({ source: new MB.BlobSource(blob), formats: MB.ALL_FORMATS });
+    try {
+      const tr = await input.getPrimaryVideoTrack(); if (!tr) return 0;
+      const sink = new MB.EncodedPacketSink(tr);
+      let p = await sink.getFirstKeyPacket({ metadataOnly: true }), n = 0, first = p ? p.timestamp : 0, last = first;
+      while (p && n < 400 && p.timestamp - first < 60) { n++; last = p.timestamp; p = await sink.getNextKeyPacket(p, { metadataOnly: true }); }
+      const dur = await tr.computeDuration();
+      return n <= 1 ? dur : (last - first) / (n - 1);
+    } finally { if (input.dispose) input.dispose(); }
+  }
+  async function makeProxy(blob, onProgress) {
+    const MB = await load();
+    const input = new MB.Input({ source: new MB.BlobSource(blob), formats: MB.ALL_FORMATS });
+    try {
+      const tr = await input.getPrimaryVideoTrack(); if (!tr || !(await tr.canDecode())) return null;
+      const w = tr.displayWidth, h = tr.displayHeight, sc = Math.min(1, 720 / Math.min(w, h));
+      const W = Math.max(2, Math.round(w * sc / 2) * 2), H = Math.max(2, Math.round(h * sc / 2) * 2);
+      const mp4 = await MB.canEncodeVideo('avc', { width: W, height: H, bitrate: 6e6 });
+      const vc = mp4 ? 'avc' : await MB.getFirstEncodableVideoCodec(['vp9', 'vp8'], { width: W, height: H, bitrate: 6e6 });
+      if (!vc) return null;
+      const output = new MB.Output({ format: mp4 ? new MB.Mp4OutputFormat({ fastStart: 'in-memory' }) : new MB.WebMOutputFormat(), target: new MB.BufferTarget() });
+      const conv = await MB.Conversion.init({ input, output, video: { width: W, height: H, fit: 'fill', codec: vc, bitrate: 6e6, keyFrameInterval: .25, forceTranscode: true }, showWarnings: false });
+      if (!conv.isValid) return null;
+      if (onProgress) conv.onProgress = onProgress;
+      await conv.execute();
+      return new Blob([output.target.buffer], { type: mp4 ? 'video/mp4' : 'video/webm' });
+    } finally { if (input.dispose) input.dispose(); }
+  }
+
+  window.BezaleelExport = { supported, load, pickFormat, Frames, makeOutput, keyGap, makeProxy };
 })();
