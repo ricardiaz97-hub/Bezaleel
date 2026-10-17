@@ -44,7 +44,16 @@
     if (sections.length && sections[0].t > .5) sections.unshift({ t: 0, end: sections[0].t, name: 'Inicio', typ: 'intro', level: 'suave', color: null });
     // A single marker that just names the song tells us nothing about its parts.
     const useful = sections.length > 1 ? sections : [];
-    return { name: d.name || '', beats, sections: useful, src: 'arpa' };
+    // Lyrics as Arpa keeps them: one line each, with the second it starts
+    const lyrics = cleanLyrics((d.lyrics || []).map(l => ({ t: +l.t, text: l.text })));
+    return { name: d.name || '', beats, sections: useful, lyrics, src: 'arpa' };
+  }
+
+  // Sorted lines with text and a time; each line also gets where it ends (the next line, at most 8 s later).
+  function cleanLyrics(list) {
+    const L = (list || []).filter(l => l && isFinite(+l.t) && String(l.text || '').trim()).map(l => ({ t: +(+l.t).toFixed(3), text: String(l.text).replace(/\s+/g, ' ').trim() })).sort((a, b) => a.t - b.t);
+    L.forEach((l, i) => { const nx = L[i + 1]; l.end = +Math.min(nx ? nx.t : l.t + 6, l.t + 8).toFixed(3); });
+    return L;
   }
 
   /* ---------- listening ---------- */
@@ -259,5 +268,5 @@
   }
 
   const levelAt = (secs, t) => { let l = 'medio'; for (const s of secs || []) if (t >= s.t - 1e-3 && t < s.end) l = s.level; return l; };
-  window.BezaleelSections = { detect, fromArpa, openArpa, mixStems, sectionType, levelAt, LEVELS };
+  window.BezaleelSections = { detect, fromArpa, openArpa, mixStems, cleanLyrics, sectionType, levelAt, LEVELS };
 })();

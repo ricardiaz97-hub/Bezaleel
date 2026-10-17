@@ -170,6 +170,25 @@
       out.text.push({ s: big, start: at + .3, dur: len - .3, y: vertical ? .16 : .3, style: { font: 'Bebas Neue', size: vertical ? 200 : 170, w: 400, up: true, shadow: true }, tin: { t: 'blur', d: .7 }, tout: { t: 'blur', d: .5 } });
       if (small) out.text.push({ s: small, start: at, dur: len, y: vertical ? .095 : .19, style: { font: 'Montserrat', size: vertical ? 54 : 46, w: 800, up: true, shadow: true }, tin: { t: 'up', d: .7 }, tout: { t: 'fade', d: .5 } });
     }
+    /* ---- lyrics: each line from when it is sung until the next one, big and clean ---- */
+    out.lyrics = [];
+    if (opts.lyrics && opts.lyrics.length && opts.lyricPos) {
+      const vertical = H > W, low = opts.lyricPos === 'low';
+      for (const l of opts.lyrics) {
+        const a = Math.max(t0, l.t - .08), b = Math.min(t1 - .05, (l.end || l.t + 5) - .12);
+        if (b - a < .5 || l.t >= t1 || (l.end || l.t + 5) <= t0) continue;
+        const strong = levelAt(secs, l.t + .01) === 'fuerte';
+        out.lyrics.push({ s: l.text, start: P(a), dur: +(b - a).toFixed(3), y: low ? (vertical ? .74 : .84) : .5,
+          style: { font: strong ? 'Bebas Neue' : 'Montserrat', size: strong ? (vertical ? 118 : 104) : (vertical ? 70 : 64), w: strong ? 400 : 800, up: strong, shadow: true, align: 'center' },
+          tin: { t: strong ? 'pop' : 'blur', d: Math.min(.45, (b - a) / 3) }, tout: { t: 'fade', d: Math.min(.25, (b - a) / 4) } });
+      }
+      // the title gives way to the first line: keep only its big line, and end it before the lyrics start
+      if (out.lyrics.length && out.text.length) {
+        const first = out.lyrics[0].start;
+        out.text = out.text.filter(t => t.style.font === 'Bebas Neue' || t.start + t.dur <= first);
+        for (const t of out.text) if (t.start < first && t.start + t.dur > first) t.dur = Math.max(.6, first - t.start - .1);
+      }
+    }
     out.cuts = cuts.length - 1; out.drops = dr.length; out.half = half;
     return out;
   }
