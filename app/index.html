@@ -718,7 +718,7 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
         <div><button class="btn sm" id="bClearDemo">Empezar proyecto nuevo</button></div>
       </div>
       <label class="import" for="fileIn"><span data-ic="upload"></span><b>Importar archivos</b><small>Videos, música y fotos. También puedes arrastrarlos a la ventana.</small></label>
-      <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*" hidden>
+      <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*,.arp" hidden>
       <ul class="mgrid" id="mgrid"></ul>
     </div>
     <div class="tabpane" id="tab-titles" hidden>
@@ -1036,6 +1036,7 @@ function kindOf(f) {
   if (/^video\//.test(f.type) || /\.(mp4|mov|webm|m4v|mkv|avi)$/i.test(f.name)) return 'video';
   if (/^audio\//.test(f.type) || /\.(mp3|wav|m4a|aac|ogg|oga|flac|opus)$/i.test(f.name)) return 'audio';
   if (/^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.name)) return 'image';
+  if (/\.arp$/i.test(f.name)) return 'arpa';
   return null;
 }
 function thumbFrom(src, w, h) {
@@ -1105,15 +1106,19 @@ async function computePeaks(m, wantBeats) {
     if (mono && m.beats && m.secSrc !== 'arpa' && window.BezaleelSections) { try { m.sections = BezaleelSections.detect(mono, buf.sampleRate, m.beats); m.secSrc = 'auto'; } catch (e) { console.warn('Bezaleel sections:', e); } }
   } catch (e) { /* video without an audio track, or a format the browser can't decode for waveforms */ }
 }
-async function importFiles(list) {
-  const files = [...list].filter(f => kindOf(f));
-  if (!files.length) { toast('Esos archivos no son videos, audios ni fotos.'); return; }
+// preset: fields copied onto each new media before it is analyzed (an Arpa song brings its own beats and parts).
+async function importFiles(list, preset) {
+  const all = [...list].filter(f => kindOf(f)), ids = [];
+  const files = all.filter(f => kindOf(f) !== 'arpa');
+  for (const f of all.filter(f => kindOf(f) === 'arpa')) await importArp(f, null);
+  if (!all.length) { toast('Esos archivos no son videos, audios ni fotos.'); return ids; }
+  if (!files.length) return ids;
   showTab('media');
   // On a phone the library is at the bottom of the page: put what was imported straight on the timeline.
   const auto = matchMedia('(max-width:900px)').matches;
   for (const f of files) {
-    const id = uid(); const m = { id, kind: kindOf(f), name: f.name.replace(/\.[^.]+$/, ''), blob: f, url: URL.createObjectURL(f), duration: 0, w: 0, h: 0, thumb: '', peaks: null, loading: true };
-    M.set(id, m); order.unshift(id); renderLib();
+    const id = uid(); const m = Object.assign({ id, kind: kindOf(f), name: f.name.replace(/\.[^.]+$/, ''), blob: f, url: URL.createObjectURL(f), duration: 0, w: 0, h: 0, thumb: '', peaks: null, loading: true }, preset || {});
+    M.set(id, m); order.unshift(id); ids.push(id); renderLib();
     try {
       if (m.kind === 'video') { await probeVideo(m); if (!m.w) m.kind = 'audio'; await computePeaks(m); if (m.kind === 'audio') m.thumb = waveThumb(m.peaks); }
       else if (m.kind === 'audio') { await probeAudio(m); await computePeaks(m); m.thumb = waveThumb(m.peaks); }
@@ -1127,6 +1132,7 @@ async function importFiles(list) {
     renderLib();
   }
   saveProject(); renderTimeline();
+  return ids.filter(id => M.has(id));
 }
 function restoreMedia(r) {
   const m = Object.assign({}, r, { url: URL.createObjectURL(r.blob), loading: false });
@@ -2974,13 +2980,13 @@ function aeShow() {
     songInfo = busy ? '<p class="note">Escuchando la canción para encontrar el ritmo y las partes…</p>'
       : !bt ? `<p class="note">Todavía no se conoce el ritmo de esta canción.</p><div><button class="btn sm" data-ae="detect">Detectar ritmo y partes</button></div>`
       : `<p class="note"><b>${Math.round(bt.bpm)} BPM</b> · ${S.length ? `${S.length} partes ${m.secSrc === 'arpa' ? '<b>de Arpa</b>' : 'detectadas al escuchar'}` : 'sin partes detectadas'}${win ? ` · el edit va del ${fmtS(win.t0)} al ${fmtS(win.t1)} (${Math.round(win.t1 - win.t0)} s)` : ''}</p>${secBar(m, win)}`;
-    songInfo += `<div class="btnrow"><button class="btn sm" data-ae="arp">${svg('upload')}Usar las partes de Arpa (.arp)</button>${bt && m.secSrc === 'arpa' ? '<button class="btn sm ghost" data-ae="detect">Volver a escuchar</button>' : ''}</div>
-      <p class="note">En Arpa, cada canción tiene un archivo <b>.arp</b> en su carpeta (Documentos › Stageline › songs). Trae los nombres de las partes y el tiempo exacto del click.</p>`;
+    songInfo += `<div class="btnrow"><button class="btn sm" data-ae="arp">${svg('upload')}Abrir canción de Arpa (.arp)</button>${bt && m.secSrc === 'arpa' ? '<button class="btn sm ghost" data-ae="detect">Volver a escuchar</button>' : ''}</div>
+      <p class="note">Sirve la canción que exportas desde Arpa (trae el audio, las partes y el tiempo exacto del click) o el <b>.arp</b> de su carpeta en Documentos › Stageline › songs.</p>`;
   }
   box.innerHTML = `<h2 id="aeTitle">Edit automático</h2>
     <p>Bezaleel corta tus videos al ritmo de la canción: pocos cortes en lo suave, más en el coro, y un golpe fuerte cuando entra. Después puedes cambiar cualquier toma a mano.</p>
     ${songs.length ? `<div class="fld"><label for="aeSong">Canción</label><select id="aeSong">${songs.map(s2 => `<option value="${s2.id}"${s2.id === AE.song ? ' selected' : ''}>${esc(s2.name)}</option>`).join('')}</select></div>${songInfo}`
-      : '<p class="note err">Primero importa la canción (MP3 o WAV) con el botón <b>Importar</b>.</p>'}
+      : `<p class="note err">Primero importa la canción (MP3 o WAV), o ábrela directo desde Arpa.</p><div><button class="btn sm" data-ae="arp">${svg('upload')}Abrir canción de Arpa (.arp)</button></div>`}
     <div class="fld"><span>Videos para el edit</span>${vis.length ? `<div class="vlist">${vis.map(v => { const tg = BezaleelAutoEdit.tagOf(v.name); return `<label class="vitem"><input type="checkbox" data-aev="${v.id}"${AE.vids.has(v.id) ? ' checked' : ''}><i style="background-image:url(${v.thumb || ''})"></i><span><b>${esc(v.name)}</b><em>${tg ? 'para lo ' + LVN[tg].toLowerCase() : v.kind === 'image' ? 'foto' : fmtS(v.duration)}</em></span></label>`; }).join('')}</div>
       <p class="note">Si el nombre de un video dice <b>suave</b>, <b>medio</b> o <b>fuerte</b> (como los fondos de Arpa), se usa en esas partes.</p>` : '<p class="note err">Importa uno o más videos o fotos.</p>'}</div>
     <div class="fld"><span>Duración</span>${segB('len', [[15, '15 s'], [30, '30 s'], [60, '60 s'], [0, 'Toda la canción']], AE.len)}</div>
@@ -2995,15 +3001,39 @@ async function aeDetect(m) {
   m.beatsBusy = true; aeShow();
   await computePeaks(m, true); m.beatsBusy = false; storeMedia(m); renderTimeline(); aeShow();
 }
+// Opens an Arpa song: a plain .arp (parts and click grid for a song already in Medios) or an Arpa song package
+// (a ZIP with song.arp and its audio), which also brings the song itself. Returns the song's media, or null.
 async function importArp(file, m) {
   try {
-    const r = BezaleelSections.fromArpa(await file.text(), m.duration);
-    if (!r.sections.length && !r.beats) throw new Error('Esa canción de Arpa no tiene marcadores ni cuadrícula de tiempo.');
-    if (r.beats) m.beats = r.beats;
-    if (r.sections.length) { m.sections = r.sections; m.secSrc = 'arpa'; }
+    toast(`Abriendo "${file.name}"…`, 60000);
+    const pk = await BezaleelSections.openArpa(file);
+    const r = BezaleelSections.fromArpa(pk.text, m ? m.duration : 0);
+    if (!r.sections.length && !r.beats) throw new Error('Esa canción de Arpa no tiene marcadores ni cuadrícula de tiempo. Márcala en Arpa y vuelve a exportarla.');
+    if (pk.stems.length) {
+      // the package's own audio: every stem except click and guide
+      const mix = await BezaleelSections.mixStems(pk.stems, (i, n) => toast(`Mezclando las pistas de "${r.name || file.name}" (${i + 1} de ${n})…`, 60000));
+      if (!mix) throw new Error('El paquete de Arpa no trae pistas de música (solo click o guía).');
+      const ext = (mix.name.match(/\.[^.]+$/) || ['.wav'])[0];
+      const song = new File([mix.blob], (r.name || file.name.replace(/\.arp$/i, '')) + ext, { type: mix.blob.type || 'audio/wav' });
+      toast(`Importando "${r.name || file.name}"…`, 60000);
+      const preset = { beats: r.beats || undefined, sections: r.sections.length ? r.sections : undefined, secSrc: r.sections.length ? 'arpa' : undefined };
+      const ids = await importFiles([song], preset);
+      m = ids.length ? M.get(ids[0]) : null;
+      if (!m) return null;
+    } else {
+      if (!m) {
+        // a plain .arp from the main Importar button: find its song among the imported audio by the stem names
+        const names = Object.keys((() => { try { return JSON.parse(pk.text).stems || {}; } catch (e) { return {}; } })()).map(n => n.replace(/\.[^.]+$/, '').toLowerCase());
+        m = [...M.values()].find(x => x.kind === 'audio' && names.includes(String(x.name).toLowerCase())) || [...M.values()].find(x => x.kind === 'audio' && String(x.name).toLowerCase() === String(r.name).toLowerCase());
+        if (!m) throw new Error(`Primero importa el audio de "${r.name || 'la canción'}" (el MT de Arpa), o exporta la canción desde Arpa con su audio.`);
+      }
+      if (r.beats) m.beats = r.beats;
+      if (r.sections.length) { m.sections = r.sections; m.secSrc = 'arpa'; }
+    }
     storeMedia(m); BEATS = projectBeats(); renderTimeline(); requestDraw();
-    toast(`Partes de Arpa: ${r.sections.length}${r.beats ? ` · ${Math.round(r.beats.bpm)} BPM del click` : ''}.`, 4500);
-  } catch (e) { toast(e.message || 'No se pudo leer ese archivo de Arpa.', 6000); }
+    toast(`"${r.name || m.name}" de Arpa: ${r.sections.length} partes${r.beats ? ` · ${Math.round(r.beats.bpm)} BPM del click` : ''}.`, 5000);
+    return m;
+  } catch (e) { console.warn('Bezaleel Arpa:', e); toast(e.message || 'No se pudo leer ese archivo de Arpa.', 7000); return null; }
 }
 function aeCreate() {
   const m = M.get(AE.song); if (!m || !m.beats) return;
@@ -3051,8 +3081,8 @@ $('#aeBox').addEventListener('change', e => {
 $('#arpIn').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
   const target = $('#aeDlg').hidden ? (cSel() && M.get(cSel().mediaId)) : M.get(AE.song);
-  if (!target) { toast('Primero elige la canción.'); return; }
-  await importArp(f, target);
+  const got = await importArp(f, target || null);
+  if (got && !$('#aeDlg').hidden) AE.song = got.id;
   if (!$('#aeDlg').hidden) aeShow(); else renderInspector();
 });
 

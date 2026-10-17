@@ -29,7 +29,7 @@
   }
   // Reads an Arpa song file. Returns { name, beats: {bpm, times, down, sig, conf, arpa}, sections: [...] } or throws.
   function fromArpa(text, duration) {
-    let d; try { d = JSON.parse(text); } catch (e) { throw new Error('Ese archivo no es una canción de Arpa (.arp).'); }
+    let d; try { d = JSON.parse(String(text).replace(/^\uFEFF/, '')); } catch (e) { throw new Error('Ese archivo no es una canción de Arpa (.arp).'); }
     if (!d || d.format !== 'arpa-song') throw new Error('Ese archivo no es una canción de Arpa (.arp).');
     const g = d.grid || {}, sig = Math.max(1, Math.min(12, +g.sig || 4));
     const times = (g.beats || []).map(Number).filter(isFinite).sort((a, b) => a - b);
@@ -40,6 +40,8 @@
       const st = sectionType(m.name), lvl = LEVELS.includes(m.int) ? m.int : st.level;
       return { t: +(+m.t).toFixed(4), end: +((i + 1 < mk.length ? +mk[i + 1].t : end)).toFixed(4), name: String(m.name || '').trim() || 'Sección', typ: st.typ, level: lvl, color: m.color || null };
     }).filter(s => s.end - s.t > .05);
+    // Before the first marker (a count-in or a free intro) counts as a soft start.
+    if (sections.length && sections[0].t > .5) sections.unshift({ t: 0, end: sections[0].t, name: 'Inicio', typ: 'intro', level: 'suave', color: null });
     // A single marker that just names the song tells us nothing about its parts.
     const useful = sections.length > 1 ? sections : [];
     return { name: d.name || '', beats, sections: useful, src: 'arpa' };
@@ -164,6 +166,98 @@
     return secs;
   }
 
+  /* ---------- Arpa song packages (.arp that is a ZIP with song.arp + stems/) ---------- */
+  // Reads the ZIP's directory from the end of the file and returns its entries as lazy slices of the file,
+  // so a 350 MB package is never loaded whole.
+  async function zipEntries(file) {
+    const tail = new DataView(await file.slice(Math.max(0, file.size - 65558)).arrayBuffer());
+    let eo = -1; for (let i = tail.byteLength - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eo = i; break; }
+    if (eo < 0) throw new Error('El paquete de Arpa está incompleto (no se encontró el índice del ZIP).');
+    let count = tail.getUint16(eo + 10, true), cdSize = tail.getUint32(eo + 12, true), cdOff = tail.getUint32(eo + 16, true);
+    if (cdOff === 0xFFFFFFFF || count === 0xFFFF) { // ZIP64
+      const base = Math.max(0, file.size - 65558), lo = eo - 20;
+      if (lo >= 0 && tail.getUint32(lo, true) === 0x07064b50) {
+        const z64 = Number(tail.getBigUint64(lo + 8, true)), r = new DataView(await file.slice(z64, z64 + 56).arrayBuffer());
+        count = Number(r.getBigUint64(32, true)); cdSize = Number(r.getBigUint64(40, true)); cdOff = Number(r.getBigUint64(48, true));
+      } else void base;
+    }
+    const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), dec = new TextDecoder();
+    const out = [];
+    for (let p = 0, k = 0; k < count && p + 46 <= cd.byteLength; k++) {
+      if (cd.getUint32(p, true) !== 0x02014b50) break;
+      const method = cd.getUint16(p + 10, true); let csize = cd.getUint32(p + 20, true), usize = cd.getUint32(p + 24, true);
+      const nl = cd.getUint16(p + 28, true), xl = cd.getUint16(p + 30, true), cl = cd.getUint16(p + 32, true); let lho = cd.getUint32(p + 42, true);
+      const name = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nl));
+      // ZIP64 sizes and offsets live in the extra field
+      for (let x = p + 46 + nl; x + 4 <= p + 46 + nl + xl;) {
+        const id = cd.getUint16(x, true), sz = cd.getUint16(x + 2, true);
+        if (id === 1) { let q = x + 4; if (usize === 0xFFFFFFFF) { usize = Number(cd.getBigUint64(q, true)); q += 8; } if (csize === 0xFFFFFFFF) { csize = Number(cd.getBigUint64(q, true)); q += 8; } if (lho === 0xFFFFFFFF) lho = Number(cd.getBigUint64(q, true)); }
+        x += 4 + sz;
+      }
+      out.push({ name, method, csize, usize, lho });
+      p += 46 + nl + xl + cl;
+    }
+    const data = async e => {
+      const h = new DataView(await file.slice(e.lho, e.lho + 30).arrayBuffer());
+      const start = e.lho + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+      const raw = file.slice(start, start + e.csize);
+      if (e.method === 0) return raw;
+      if (e.method === 8 && typeof DecompressionStream !== 'undefined') return new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+      throw new Error('El paquete de Arpa usa una compresión que Bezaleel no puede abrir.');
+    };
+    return { entries: out, data };
+  }
+  const isZip = async file => { const b = new Uint8Array(await file.slice(0, 4).arrayBuffer()); return b[0] === 0x50 && b[1] === 0x4B && b[2] === 3 && b[3] === 4; };
+  // Opens what Arpa saves or exports: a plain .arp, or a song package with its audio.
+  // Returns { text, stems: [{ name, blob, role, gain, mute }] } (stems only from a package).
+  async function openArpa(file) {
+    if (!(await isZip(file))) return { text: (await file.text()).replace(/^\uFEFF/, ''), stems: [] };
+    const z = await zipEntries(file);
+    const songE = z.entries.find(e => /(^|\/)song\.arp$/i.test(e.name)) || z.entries.find(e => /\.arp$/i.test(e.name));
+    if (!songE) throw new Error('El paquete no tiene la canción de Arpa (song.arp).');
+    const text = (await (await z.data(songE)).text()).replace(/^\uFEFF/, '');
+    let meta = {}; try { meta = (JSON.parse(text).stems) || {}; } catch (e) { /* fromArpa reports it */ }
+    const stems = [];
+    for (const e of z.entries) {
+      if (!/\.(wav|mp3|m4a|aac|flac|ogg|aif|aiff)$/i.test(e.name)) continue;
+      const base = e.name.split('/').pop(), info = meta[base] || {};
+      stems.push({ name: base, role: info.role || 'tracks', gain: info.gain != null ? +info.gain : 1, mute: !!info.mute, blob: await z.data(e) });
+    }
+    return { text, stems };
+  }
+  // The song for the video: every stem except click and guide, mixed with Arpa's levels, as one 16-bit stereo WAV.
+  // A single stem is used as it is.
+  async function mixStems(stems, onProgress) {
+    const use = stems.filter(s => !s.mute && s.role !== 'click' && s.role !== 'guide');
+    if (!use.length) return null;
+    if (use.length === 1) return { blob: use[0].blob, name: use[0].name };
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, SR = 48000;
+    let L = null, R = null, len = 0, peak = 0;
+    for (let i = 0; i < use.length; i++) {
+      const s = use[i];
+      if (onProgress) onProgress(i, use.length);
+      let buf;
+      try { const ab = await s.blob.arrayBuffer(); buf = await new Promise((res, rej) => { const p = new OAC(2, SR, SR).decodeAudioData(ab, res, rej); if (p && p.catch) p.catch(rej); }); }
+      catch (e) { continue; }
+      if (!L) { len = buf.length; L = new Float32Array(len); R = new Float32Array(len); }
+      const a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : a, g = s.gain, n = Math.min(len, buf.length);
+      for (let k = 0; k < n; k++) { L[k] += a[k] * g; R[k] += b[k] * g; }
+    }
+    if (!L) return null;
+    for (let k = 0; k < len; k++) { const v = Math.max(Math.abs(L[k]), Math.abs(R[k])); if (v > peak) peak = v; }
+    const norm = peak > .98 ? .98 / peak : 1, parts = [], CH = 1 << 18;
+    const hdr = new DataView(new ArrayBuffer(44)), wr = (o, t) => { for (let i = 0; i < t.length; i++) hdr.setUint8(o + i, t.charCodeAt(i)); };
+    wr(0, 'RIFF'); hdr.setUint32(4, 36 + len * 4, true); wr(8, 'WAVE'); wr(12, 'fmt '); hdr.setUint32(16, 16, true); hdr.setUint16(20, 1, true); hdr.setUint16(22, 2, true);
+    hdr.setUint32(24, SR, true); hdr.setUint32(28, SR * 4, true); hdr.setUint16(32, 4, true); hdr.setUint16(34, 16, true); wr(36, 'data'); hdr.setUint32(40, len * 4, true);
+    parts.push(hdr.buffer);
+    for (let o = 0; o < len; o += CH) {
+      const n = Math.min(CH, len - o), pcm = new Int16Array(n * 2);
+      for (let k = 0; k < n; k++) { pcm[2 * k] = Math.max(-1, Math.min(1, L[o + k] * norm)) * 32767; pcm[2 * k + 1] = Math.max(-1, Math.min(1, R[o + k] * norm)) * 32767; }
+      parts.push(pcm.buffer);
+    }
+    return { blob: new Blob(parts, { type: 'audio/wav' }), name: 'mezcla.wav' };
+  }
+
   const levelAt = (secs, t) => { let l = 'medio'; for (const s of secs || []) if (t >= s.t - 1e-3 && t < s.end) l = s.level; return l; };
-  window.BezaleelSections = { detect, fromArpa, sectionType, levelAt, LEVELS };
+  window.BezaleelSections = { detect, fromArpa, openArpa, mixStems, sectionType, levelAt, LEVELS };
 })();
