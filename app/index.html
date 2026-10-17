@@ -346,6 +346,10 @@ kbd{font:600 11px var(--f-mono);border:1px solid var(--line2);border-bottom-widt
 .ae .secs .s-suave,.secband.s-suave{background:#8FB3D6}.ae .secs .s-medio,.secband.s-medio{background:#E8B45A}.ae .secs .s-fuerte,.secband.s-fuerte{background:#FF6B1A}
 .ae .secs .win{outline:2px solid var(--fg);outline-offset:-2px}
 .ae input[type=text]{width:100%}
+.lmnow{display:grid;gap:6px;padding:18px;border-radius:14px;background:var(--sunk);text-align:center}
+.lmnow small{font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.lmnow b{font-size:26px;line-height:1.2;font-weight:600;text-wrap:balance}
+.lmnow span{font-size:15px;color:var(--muted)}
 .secline{display:flex;flex-wrap:wrap;gap:4px}
 .secline span{font-size:10.5px;font-weight:700;color:#0D0C0B;border-radius:5px;padding:2px 6px}
 .secline .s-suave{background:#8FB3D6}.secline .s-medio{background:#E8B45A}.secline .s-fuerte{background:#FF6B1A}
@@ -1027,7 +1031,7 @@ function saveProject() {
   }, 400);
 }
 async function storeMedia(m) {
-  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats, sections: m.sections, secSrc: m.secSrc, pxBlob: m.pxBlob, pxChecked: m.pxChecked }));
+  const ok = await DB.run('media', 'readwrite', s => s.put({ id: m.id, kind: m.kind, name: m.name, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.thumb, peaks: m.peaks, rms: m.rms, pk: m.pk, beats: m.beats, sections: m.sections, secSrc: m.secSrc, lyrics: m.lyrics, pxBlob: m.pxBlob, pxChecked: m.pxChecked }));
   if (!ok) toast(`"${m.name}" es muy grande para guardarlo en el navegador. Funciona mientras esta pestaña siga abierta.`, 6000);
 }
 
@@ -2996,7 +3000,7 @@ $('#bShot').addEventListener('click', async () => {
 });
 
 /* ---------------- automatic edit: a song + videos -> a beat-cut edit (see autoedit.js and sections.js) ---------------- */
-const AE = { song: '', vids: null, len: 30, from: 'first', fmt: 'reel', title: null, seed: 1, made: false };
+const AE = { song: '', vids: null, len: 30, from: 'first', fmt: 'reel', title: null, seed: 1, made: false, lyr: 'low' };
 const LVN = { suave: 'Suave', medio: 'Medio', fuerte: 'Fuerte' };
 const aeSongs = () => order.map(id => M.get(id)).filter(m => m && m.kind === 'audio' && !m.loading);
 const aeVisuals = () => order.map(id => M.get(id)).filter(m => m && (m.kind === 'video' || m.kind === 'image') && !m.loading);
@@ -3008,6 +3012,37 @@ function aeWindow(m) {
 function secBar(m, win) {
   const S = (m && m.sections) || [], d = (m && m.duration) || 1; if (!S.length) return '';
   return `<div class="secs" aria-hidden="true">${S.map(s => { const w = (s.end - s.t) / d * 100; const inW = win && s.end > win.t0 + .05 && s.t < win.t1 - .05; return `<span class="s-${s.level}${inW ? ' win' : ''}" style="flex:${w.toFixed(3)} 1 0" title="${esc(s.name)} · ${fmtS(s.t)}">${w > 7 ? esc(s.name) : ''}</span>`; }).join('')}</div>`;
+}
+/* ---- lyrics: from Arpa, or pasted and marked by tapping while the song plays ---- */
+let LM = null; // marking session: { m, lines, i, times, audio }
+function lmShow() {
+  const box = $('#aeBox'), m = LM.m, L = LM.lines, i = LM.i;
+  if (!LM.audio) {
+    box.innerHTML = `<h2 id="aeTitle">Letra de "${esc(m.name)}"</h2>
+      <p>Escribe o pega la letra, una línea por renglón, como aparece en pantalla. Después la marcas tocando cuando empieza cada línea.</p>
+      <div class="fld"><label for="lmText">Letra</label><textarea id="lmText" rows="10">${esc(LM.text || '')}</textarea></div>
+      <div class="fld"><span>Empezar a escuchar desde</span><div class="seg" role="group">${[['0', 'El inicio de la canción'], ['win', 'Un poco antes del edit']].map(([a, n]) => `<button data-lm="from:${a}" aria-pressed="${(LM.from || '0') === a}">${n}</button>`).join('')}</div></div>
+      <div class="row"><button class="btn ghost" data-lm="back">Volver</button><button class="btn primary" data-lm="start">Empezar a marcar</button></div>`;
+    return;
+  }
+  const cur = L[i], nxt = L[i + 1];
+  box.innerHTML = `<h2 id="aeTitle">Toca cuando empieza cada línea</h2>
+    <p>Toca el botón o la barra espaciadora justo cuando se empieza a cantar la línea de abajo. ${i} de ${L.length} marcadas.</p>
+    <div class="lmnow"><small>Ahora</small><b>${cur ? esc(cur) : '¡Listo!'}</b>${nxt ? `<small>Después</small><span>${esc(nxt)}</span>` : ''}</div>
+    <div class="row" style="justify-content:space-between"><button class="btn ghost" data-lm="redo">Volver a empezar</button><span class="note" id="lmClock">${fmtS(LM.audio.currentTime)}</span>
+      <span style="display:flex;gap:8px"><button class="btn" data-lm="done">Terminar</button>${cur ? '<button class="btn primary" data-lm="tap">Empieza ahora</button>' : ''}</span></div>`;
+}
+function lmTap() {
+  if (!LM || !LM.audio || LM.i >= LM.lines.length) return;
+  LM.times[LM.i] = Math.max(0, LM.audio.currentTime - .12); LM.i++; // people tap a moment late
+  lmShow(); if (LM.i >= LM.lines.length) lmFinish();
+}
+function lmFinish() {
+  const { m, lines, times } = LM;
+  if (LM.audio) { LM.audio.pause(); clearInterval(LM.clock); }
+  const marked = lines.map((t, i) => ({ t: times[i], text: t })).filter(x => x.t != null);
+  if (marked.length) { m.lyrics = BezaleelSections.cleanLyrics(marked); storeMedia(m); toast(`Letra lista: ${marked.length} líneas.`); }
+  LM = null; aeShow();
 }
 function aeShow() {
   const box = $('#aeBox'); $('#aeDlg').hidden = false;
@@ -3035,6 +3070,9 @@ function aeShow() {
       : `<p class="note err">Primero importa la canción (MP3 o WAV), o ábrela directo desde Arpa.</p><div><button class="btn sm" data-ae="arp">${svg('upload')}Abrir canción de Arpa (.arp)</button></div>`}
     <div class="fld"><span>Videos para el edit</span>${vis.length ? `<div class="vlist">${vis.map(v => { const tg = BezaleelAutoEdit.tagOf(v.name); return `<label class="vitem"><input type="checkbox" data-aev="${v.id}"${AE.vids.has(v.id) ? ' checked' : ''}><i style="background-image:url(${v.thumb || ''})"></i><span><b>${esc(v.name)}</b><em>${tg ? 'para lo ' + LVN[tg].toLowerCase() : v.kind === 'image' ? 'foto' : fmtS(v.duration)}</em></span></label>`; }).join('')}</div>
       <p class="note">Si el nombre de un video dice <b>suave</b>, <b>medio</b> o <b>fuerte</b> (como los fondos de Arpa), se usa en esas partes.</p>` : '<p class="note err">Importa uno o más videos o fotos.</p>'}</div>
+    ${m && m.beats ? `<div class="fld"><span>Letra${m.lyrics && m.lyrics.length ? ` · ${m.lyrics.length} líneas${m.secSrc === 'arpa' ? ' (de Arpa o marcadas)' : ''}` : ''}</span>
+      ${m.lyrics && m.lyrics.length ? segB('lyr', [['', 'Sin letra'], ['low', 'Abajo'], ['mid', 'Al centro']], AE.lyr) : '<p class="note">Esta canción no tiene letra todavía. Si la tiene en Arpa, ábrela desde Arpa; si no, escríbela aquí y márcala con la música.</p>'}
+      <div><button class="btn sm" data-ae="lyrics">${svg('text')}${m.lyrics && m.lyrics.length ? 'Cambiar o volver a marcar la letra' : 'Escribir y marcar la letra'}</button></div></div>` : ''}
     <div class="fld"><span>Duración</span>${segB('len', [[15, '15 s'], [30, '30 s'], [60, '60 s'], [0, 'Toda la canción']], AE.len)}</div>
     ${AE.len ? `<div class="fld"><span>Empieza</span>${segB('from', [['first', 'Antes del primer coro'], ['last', 'Antes del último coro'], ['start', 'Desde el inicio']], AE.from)}</div>` : ''}
     ${P.aspect !== '9:16' ? `<div class="fld"><span>Formato</span>${segB('fmt', [['reel', '9:16 Reels'], ['keep', 'El del proyecto (' + P.aspect + ')']], AE.fmt)}</div>` : ''}
@@ -3062,7 +3100,7 @@ async function importArp(file, m) {
       const ext = (mix.name.match(/\.[^.]+$/) || ['.wav'])[0];
       const song = new File([mix.blob], (r.name || file.name.replace(/\.arp$/i, '')) + ext, { type: mix.blob.type || 'audio/wav' });
       toast(`Importando "${r.name || file.name}"…`, 60000);
-      const preset = { beats: r.beats || undefined, sections: r.sections.length ? r.sections : undefined, secSrc: r.sections.length ? 'arpa' : undefined };
+      const preset = { beats: r.beats || undefined, sections: r.sections.length ? r.sections : undefined, secSrc: r.sections.length ? 'arpa' : undefined, lyrics: r.lyrics.length ? r.lyrics : undefined };
       const ids = await importFiles([song], preset);
       m = ids.length ? M.get(ids[0]) : null;
       if (!m) return null;
@@ -3075,9 +3113,10 @@ async function importArp(file, m) {
       }
       if (r.beats) m.beats = r.beats;
       if (r.sections.length) { m.sections = r.sections; m.secSrc = 'arpa'; }
+      if (r.lyrics.length) m.lyrics = r.lyrics;
     }
     storeMedia(m); BEATS = projectBeats(); renderTimeline(); requestDraw();
-    toast(`"${r.name || m.name}" de Arpa: ${r.sections.length} partes${r.beats ? ` · ${Math.round(r.beats.bpm)} BPM del click` : ''}.`, 5000);
+    toast(`"${r.name || m.name}" de Arpa: ${r.sections.length} partes${r.beats ? ` · ${Math.round(r.beats.bpm)} BPM del click` : ''}${r.lyrics.length ? ` · ${r.lyrics.length} líneas de letra` : ''}.`, 5000);
     return m;
   } catch (e) { console.warn('Bezaleel Arpa:', e); toast(e.message || 'No se pudo leer ese archivo de Arpa.', 7000); return null; }
 }
@@ -3090,6 +3129,7 @@ function aeCreate() {
   const [W, H] = RES[P.aspect][P.q];
   const win = aeWindow(m);
   const R = BezaleelAutoEdit.build({ beats: m.beats, sections: m.sections || [], duration: m.duration, t0: win.t0, t1: win.t1, W, H, seed: AE.seed++,
+    lyrics: AE.lyr && m.lyrics ? m.lyrics : null, lyricPos: AE.lyr,
     title: ($('#aeTitleIn') ? $('#aeTitleIn').value : AE.title) || '', videos: vis.map(v => ({ id: v.id, kind: v.kind, duration: v.duration, w: v.w, h: v.h, name: v.name })) });
   if (!R) { toast('No se pudo armar el edit con esos videos.'); return; }
   for (const c of P.clips) if (isBound(c)) dropEl(c.id);
@@ -3104,21 +3144,41 @@ function aeCreate() {
   }
   for (const f of R.fx) P.clips.push(newClip('fx', f.track || 'f1', f.start, f.dur, { efx: fxOf(f.efx), lut: f.lut || null }));
   R.text.forEach((t, i) => { const c = newText(t.s, t.style, { start: t.start, dur: t.dur, y: t.y, track: i ? 't2' : 't1' }); c.tin = t.tin; c.tout = t.tout; P.clips.push(c); loadFont(c); });
+  for (const t of R.lyrics || []) { const c = newText(t.s, t.style, { start: t.start, dur: t.dur, y: t.y, track: 't2' }); c.tin = t.tin; c.tout = t.tout; P.clips.push(c); loadFont(c); }
   if (!P.name || P.name === 'Mi video') P.name = cleanName(m.name) || 'Edit';
   AE.made = true; $('#aeDlg').hidden = true;
   BEATS = projectBeats(); renderAll(); fitZoom(); seek(0); commit();
-  toast(`Edit listo: ${R.cuts} tomas${R.drops ? ', con la entrada del coro marcada' : ''}. Dale Reproducir. Para otra versión, abre Edit automático otra vez.`, 6500);
+  toast(`Edit listo: ${R.cuts} tomas${R.drops ? ', con la entrada del coro marcada' : ''}${R.lyrics && R.lyrics.length ? `, ${R.lyrics.length} líneas de letra` : ''}. Dale Reproducir. Para otra versión, abre Edit automático otra vez.`, 6500);
 }
 $('#bAuto').addEventListener('click', () => { if (exporting) return; if (playing) pause(); AE.made = false; aeShow(); });
 $('#aeBox').addEventListener('click', e => {
   const b = e.target.closest('[data-ae]'); if (!b) return;
   const [a, v] = b.dataset.ae.split(':'); const m = M.get(AE.song);
-  if (a === 'close') { $('#aeDlg').hidden = true; return; }
+  if (a === 'close') { if (LM && LM.audio) { LM.audio.pause(); clearInterval(LM.clock); } LM = null; $('#aeDlg').hidden = true; return; }
   if (a === 'go') { AE.title = $('#aeTitleIn') ? $('#aeTitleIn').value : AE.title; aeCreate(); return; }
   if (a === 'detect' && m) { if (m.secSrc === 'arpa') { m.secSrc = ''; if (m.beats) m.beats.arpa = false; } aeDetect(m); return; }
   if (a === 'arp') { $('#arpIn').click(); return; }
-  if (a === 'len') AE.len = +v; else if (a === 'from') AE.from = v; else if (a === 'fmt') AE.fmt = v;
+  if (a === 'lyrics' && m) { AE.title = $('#aeTitleIn') ? $('#aeTitleIn').value : AE.title; LM = { m, lines: [], i: 0, times: [], text: (m.lyrics || []).map(l => l.text).join('\n'), from: '0' }; lmShow(); return; }
+  if (a === 'len') AE.len = +v; else if (a === 'from') AE.from = v; else if (a === 'fmt') AE.fmt = v; else if (a === 'lyr') AE.lyr = v;
   AE.title = $('#aeTitleIn') ? $('#aeTitleIn').value : AE.title; aeShow();
+});
+$('#aeBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-lm]'); if (!b || !LM) return;
+  const [a, v] = b.dataset.lm.split(':');
+  if (a === 'back') { LM = null; aeShow(); return; }
+  if (a === 'from') { LM.text = $('#lmText').value; LM.from = v; lmShow(); return; }
+  if (a === 'start') {
+    LM.text = $('#lmText').value; LM.lines = LM.text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    if (!LM.lines.length) { toast('Escribe la letra primero.'); return; }
+    const win = aeWindow(LM.m); LM.start = LM.from === 'win' && win ? Math.max(0, win.t0 - 3) : 0;
+    LM.i = 0; LM.times = []; LM.audio = new Audio(LM.m.url); LM.audio.currentTime = LM.start;
+    LM.audio.play().catch(() => {}); LM.clock = setInterval(() => { const c = $('#lmClock'); if (c && LM && LM.audio) c.textContent = fmtS(LM.audio.currentTime); }, 200);
+    LM.audio.onended = () => lmFinish();
+    lmShow(); return;
+  }
+  if (a === 'tap') { lmTap(); return; }
+  if (a === 'redo') { LM.i = 0; LM.times = []; LM.audio.currentTime = LM.start; LM.audio.play().catch(() => {}); lmShow(); return; }
+  if (a === 'done') { lmFinish(); return; }
 });
 $('#aeBox').addEventListener('change', e => {
   if (e.target.id === 'aeSong') { AE.song = e.target.value; aeShow(); return; }
@@ -3153,6 +3213,8 @@ $('#bFull').addEventListener('click', () => { const s = $('#stage'); if (documen
 $('#pName').addEventListener('input', e => { P.name = e.target.value; });
 $('#pName').addEventListener('change', () => { if (!SEL) renderInspector(); commit(); });
 document.addEventListener('keydown', e => {
+  if (LM && LM.audio && (e.key === ' ' || e.key.toLowerCase() === 'l') && (e.target.tagName || '').toLowerCase() !== 'textarea') { e.preventDefault(); lmTap(); return; }
+  if (!$('#aeDlg').hidden) return;
   if (exporting || !$('#landing').hidden) return;
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
